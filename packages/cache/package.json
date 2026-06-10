@@ -1,0 +1,25 @@
+{
+  "name": "@repo/cache",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Caching layer — Upstash Redis client, cache strategies, TTL management, distributed locks",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*",
+    "@upstash/redis": "^1.34.0"
+  },
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  }
+}

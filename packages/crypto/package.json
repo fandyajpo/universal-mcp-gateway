@@ -1,0 +1,24 @@
+{
+  "name": "@repo/crypto",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Encryption utilities — AES-256-GCM, bcrypt hashing, key derivation, secure random",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*",
+    "bcrypt": "^5.1.1"
+  },
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "@types/bcrypt": "^6.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  }
+}

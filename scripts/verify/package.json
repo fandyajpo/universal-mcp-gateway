@@ -1,0 +1,28 @@
+{
+  "name": "@repo/verify",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Phase 00 verification suite — package contracts, dependency graph, architecture rules, cross-package integration, build integrity",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:ci": "vitest run contracts.test dependencies.test architecture.test",
+    "test:full": "vitest run"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/config": "workspace:*",
+    "@repo/validation": "workspace:*",
+    "@repo/utils": "workspace:*",
+    "@repo/crypto": "workspace:*",
+    "@repo/database": "workspace:*",
+    "@repo/cache": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.0",
+    "typescript": "^5.7.0"
+  }
+}

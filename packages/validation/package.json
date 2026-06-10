@@ -1,0 +1,23 @@
+{
+  "name": "@repo/validation",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Zod schemas & validation — shared validation rules, request/response schemas, type inference helpers",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  }
+}

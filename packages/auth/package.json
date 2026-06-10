@@ -1,0 +1,22 @@
+{
+  "name": "@repo/auth",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Authentication & authorization — Better Auth integration, session management, RBAC, OAuth, MFA",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/database": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*",
+    "better-auth": "^1.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

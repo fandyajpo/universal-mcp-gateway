@@ -1,0 +1,21 @@
+{
+  "name": "@repo/connectors",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Built-in connector implementations — Slack, Notion, GitHub, Linear, Jira, Confluence, Google Drive",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/connector-sdk": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

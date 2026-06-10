@@ -1,0 +1,22 @@
+{
+  "name": "@repo/ai",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AI Gateway client — model routing, provider abstraction, streaming, fallback logic, cost tracking",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/cache": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

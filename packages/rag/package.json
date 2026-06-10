@@ -1,0 +1,23 @@
+{
+  "name": "@repo/rag",
+  "version": "0.0.1",
+  "private": true,
+  "description": "RAG Engine & vector search — document chunking, embedding, vector storage, retrieval, re-ranking, hybrid search",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/ai": "workspace:*",
+    "@repo/cache": "workspace:*",
+    "@repo/database": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

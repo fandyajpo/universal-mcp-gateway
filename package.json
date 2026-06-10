@@ -1,0 +1,66 @@
+{
+  "name": "universal-mcp-gateway",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Enterprise-grade AI Workspace Platform — AI Gateway, MCP Gateway, RAG Engine, Knowledge Base",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "start": "turbo start",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "clean": "turbo clean",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\"",
+    "commitlint": "commitlint --edit",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\"",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "verify": "pnpm --filter @repo/verify test",
+    "verify:ci": "pnpm --filter @repo/verify test:ci",
+    "prepare": "husky",
+    "ci": "pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml,css}": [
+      "prettier --write"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "msgpackr-extract",
+      "bcrypt",
+      "mongodb-memory-server",
+      "@sentry/cli",
+      "husky"
+    ]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.4.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  }
+}

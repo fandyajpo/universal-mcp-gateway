@@ -1,0 +1,124 @@
+import mongoose from "mongoose";
+
+import { createLogger } from "@repo/logger";
+
+const logger = createLogger("database");
+
+export interface HealthCheckResult {
+  ok: boolean;
+  latency: number;
+  error?: string;
+}
+
+export interface ConnectionConfig {
+  minPoolSize?: number;
+  maxPoolSize?: number;
+  serverSelectionTimeoutMS?: number;
+}
+
+const DEFAULT_CONFIG: ConnectionConfig = {
+  minPoolSize: 5,
+  maxPoolSize: 20,
+  serverSelectionTimeoutMS: 10000,
+};
+
+let connectionPromise: Promise<void> | null = null;
+let eventListenersAttached = false;
+
+function attachEventListeners(): void {
+  if (eventListenersAttached) return;
+  eventListenersAttached = true;
+
+  mongoose.connection.on("connected", () => {
+    logger.info("MongoDB connected");
+  });
+
+  mongoose.connection.on("disconnected", () => {
+    logger.warn("MongoDB disconnected");
+  });
+
+  mongoose.connection.on("reconnected", () => {
+    logger.info("MongoDB reconnected");
+  });
+
+  mongoose.connection.on("error", (err) => {
+    logger.error({ err }, "MongoDB connection error");
+  });
+}
+
+export async function connect(url?: string, config?: ConnectionConfig): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+  if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
+    return;
+  }
+
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
+  const DATABASE_URL = url ?? (await getDatabaseUrl());
+
+  const opts: ConnectionConfig = { ...DEFAULT_CONFIG, ...config };
+
+  attachEventListeners();
+
+  connectionPromise = mongoose.connect(DATABASE_URL, {
+    minPoolSize: opts.minPoolSize,
+    maxPoolSize: opts.maxPoolSize,
+    serverSelectionTimeoutMS: opts.serverSelectionTimeoutMS,
+    socketTimeoutMS: 45000,
+    heartbeatFrequencyMS: 10000,
+  }).then(() => {
+    logger.info("MongoDB connection established");
+  }).catch((err: unknown) => {
+    logger.error({ err }, "MongoDB connection failed");
+    connectionPromise = null;
+    throw err;
+  });
+
+  return connectionPromise;
+}
+
+async function getDatabaseUrl(): Promise<string> {
+  const { getConfig } = await import("@repo/config");
+  const config = getConfig();
+  return config.database.url;
+}
+
+export async function disconnect(): Promise<void> {
+  connectionPromise = null;
+  await mongoose.disconnect();
+  logger.info("MongoDB disconnected gracefully");
+}
+
+export function getConnection(): mongoose.Connection {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+  if (mongoose.connection.readyState === 0) {
+    throw new Error("Database not connected. Call connect() first.");
+  }
+  return mongoose.connection;
+}
+
+export function isConnected(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+  return mongoose.connection.readyState === 1;
+}
+
+export async function healthCheck(): Promise<HealthCheckResult> {
+  const start = Date.now();
+
+  try {
+    const db = mongoose.connection.db;
+    if (!db) {
+      return { ok: false, latency: Date.now() - start, error: "No database instance" };
+    }
+    await db.admin().ping();
+    return { ok: true, latency: Date.now() - start };
+  } catch (err) {
+    return {
+      ok: false,
+      latency: Date.now() - start,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}

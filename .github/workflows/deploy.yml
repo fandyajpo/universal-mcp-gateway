@@ -1,0 +1,102 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output-${{ github.event.inputs.environment }}
+          path: |
+            apps/*/.next
+            packages/*/dist
+          retention-days: 1
+
+  deploy-dev:
+    name: Deploy to Dev
+    if: github.event.inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 10
+    environment:
+      name: dev
+      url: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output-${{ github.event.inputs.environment }}
+      - name: Deploy
+        run: echo "Deploying to dev..."
+      - name: Notify
+        run: echo "Deploy to dev completed successfully"
+
+  deploy-staging:
+    name: Deploy to Staging
+    if: github.event.inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output-${{ github.event.inputs.environment }}
+      - name: Deploy
+        run: echo "Deploying to staging..."
+      - name: Notify
+        run: echo "Deploy to staging completed successfully"
+
+  deploy-production:
+    name: Deploy to Production
+    if: github.event.inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ vars.DEPLOY_URL }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output-${{ github.event.inputs.environment }}
+      - name: Deploy
+        run: echo "Deploying to production..."
+      - name: Notify
+        run: echo "Deploy to production completed successfully"

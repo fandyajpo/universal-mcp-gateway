@@ -1,0 +1,21 @@
+{
+  "name": "@repo/mcp",
+  "version": "0.0.1",
+  "private": true,
+  "description": "MCP Gateway protocol implementation — tool registry, execution sandbox, streaming, protocol handling",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/logger": "workspace:*",
+    "@repo/types": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

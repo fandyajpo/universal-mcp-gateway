@@ -1,0 +1,22 @@
+{
+  "name": "@repo/utils",
+  "version": "0.0.1",
+  "private": true,
+  "description": "General utilities — formatting, parsing, string manipulation, date helpers, async utilities",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@repo/config-eslint": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  }
+}
