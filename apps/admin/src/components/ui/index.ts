@@ -71,6 +71,7 @@ export {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
+  ThemeToggle,
 } from "@repo/ui";
 
 export type {

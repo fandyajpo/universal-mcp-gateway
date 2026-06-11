@@ -1,7 +1,9 @@
 import { Inter } from "next/font/google";
 
-import type { Metadata } from "next";
+import { LayoutShell } from "@/components/layout/layout-shell";
+
 import "../styles/globals.css";
+import type { Metadata } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): React.ReactNode {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
         <a
           href="#main-content"
@@ -33,7 +35,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <div id="main-content">{children}</div>
+        <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
   );

@@ -3,14 +3,14 @@
 ## Current Position
 
 - **Phase:** 01 (Bootstrap)
-- **Step:** 01.07 — App layout, navigation, and shell (web) — shared layout components, sidebar navigation, top navigation bar, responsive shell.
-- **Progress:** Phase 0 complete. Phase 1 — all four apps scaffolded, shared TailwindCSS theme configured, shadcn/ui components registered. Next: app layout, navigation, and shell for the web app.
+- **Step:** 01.09 — App layout, navigation, and shell (docs) — docs layout shell, sidebar with table of contents, top navigation bar, responsive shell.
+- **Progress:** Phase 0 complete. Phase 1 — all four apps scaffolded, shared TailwindCSS theme configured, shadcn/ui components registered, web app layout shell built, admin layout shell built. Next: docs app layout and navigation shell.
 
 ## Next Implementation
 
-**Step 01.07: App Layout, Navigation, and Shell (Web)**
+**Step 01.09: App Layout, Navigation, and Shell (Docs)**
 
-Build the shared app shell for the web application, including sidebar navigation, top navigation bar, responsive layout, and breadcrumb components.
+Build the docs app layout shell with documentation-specific sidebar (table of contents), top navigation bar, and responsive shell structure.
 
 ## Dependencies
 
@@ -25,6 +25,8 @@ Build the shared app shell for the web application, including sidebar navigation
 | apps/landing scaffold | Done | Marketing landing page scaffolded |
 | TailwindCSS theme | Done | Shared theme with CSS variables + dark mode |
 | shadcn/ui registration | Done | All components registered and re-exported |
+| Web app layout shell | Done | Sidebar, topbar, context panel, breadcrumbs, store, keyboard shortcuts |
+| Admin app layout shell | Done | Dark sidebar with nav groups, admin badge, topbar |
 
 ## Warnings
 
@@ -33,16 +35,17 @@ Build the shared app shell for the web application, including sidebar navigation
 3. Do not introduce `any` without justification in an ADR.
 4. All Next.js apps must use the same scaffold pattern established in 01.01-01.03.
 5. Shared shadcn/ui components are in @repo/ui; apps should only re-export, not duplicate.
+6. The docs layout should follow a different pattern than web/admin — two-column layout with sidebar Table of Contents.
 
 ## Preparation Before Next Step
 
-1. [ ] Read `docs/implementation/phase-01/01.07-layout-navigation.md`
-2. [ ] Review existing Next.js app layout patterns in apps/web/src/app/layout.tsx
-3. [ ] Review @repo/ui components available for building the shell
+1. [ ] Read `docs/implementation/phase-01/01.09-docs-layout.md`
+2. [ ] Review the docs app existing layout at apps/docs/src/app/docs/layout.tsx
+3. [ ] Review @repo/ui components available for building the docs shell
 
 ## After Completion
 
-Update STATUS.md and mark Step 01.06 as complete before proceeding to Step 01.07.
+Update STATUS.md and mark Step 01.08 as complete before proceeding to Step 01.09.
 
 ## Quick Reference
 

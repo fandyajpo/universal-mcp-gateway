@@ -7,7 +7,7 @@
 | Category | Count | Progress |
 |---|---|---|---|---|
 | Phases Total | 19 (00-18) | 1 completed |
-| Steps Total | ~220 | 21 completed |
+| Steps Total | ~220 | 23 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
@@ -17,7 +17,7 @@
 
 ## Current Step
 
-**Step 01.07** — App layout, navigation, and shell (web) — shared layout components, sidebar navigation, top navigation bar, responsive shell.
+**Step 01.09** — App layout, navigation, and shell (docs) — docs layout shell, sidebar with table of contents, top navigation bar, responsive shell.
 
 ## Completed
 
@@ -177,6 +177,25 @@
   - All 16+ components exported from barrel
   - Per-app re-export layers at apps/*/src/components/ui/
   - All apps pass lint/typecheck/build
+- [x] Web app layout, navigation, and shell (Step 01.07):
+  - Sidebar with primary/secondary nav, collapsible (expanded 280px, collapsed 60px), active route highlighting
+  - Top bar with workspace switcher, search command (Cmd+K), theme toggle, notification bell, user menu
+  - Context panel (right sidebar, toggleable via Cmd+I)
+  - Mobile sidebar via Sheet overlay (hamburger menu)
+  - Breadcrumbs auto-generated from route path
+  - Zustand layout store with localStorage persistence
+  - Keyboard shortcuts: Cmd+B (sidebar toggle), Cmd+I (right panel)
+  - Skip-to-content link preserved
+  - lint/typecheck/build all passing
+- [x] Admin app layout, navigation, and shell (Step 01.08):
+  - Dark-themed sidebar (bg-slate-900) with navigation groups: Overview, Management, Operations, Billing, Configuration
+  - Non-collapsible on desktop (w-64), Sheet overlay drawer on mobile
+  - Nav group sub-items with active route highlighting, placeholder items for future pages
+  - Top bar with admin badge (Shield icon), search placeholder, support ticket count, notifications, theme toggle, user menu
+  - Breadcrumbs auto-generated from route path
+  - Zustand store for mobile sidebar state
+  - Skip-to-content link preserved
+  - lint/typecheck/build all passing
 
 ## Not Started
 
