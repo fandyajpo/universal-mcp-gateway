@@ -19,7 +19,7 @@
     "@repo/types": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/utils": "workspace:*",
-    "@sentry/nextjs": "^8.0.0",
+    "@sentry/nextjs": "^10.57.0",
     "@shikijs/rehype": "^4.2.0",
     "@types/mdx": "^2.0.14",
     "class-variance-authority": "^0.7.1",
