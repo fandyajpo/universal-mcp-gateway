@@ -105,6 +105,259 @@
 - NEVER store server data in Zustand — it belongs in TanStack Query.
 - Store actions dispatch side-effect-free state changes. Side effects belong in components or hooks.
 
+## 3.6 Next.js Rendering Strategy
+
+### Static vs Dynamic
+
+- Prefer Static Rendering whenever data rarely changes.
+- Prefer ISR when data changes periodically.
+- Use Dynamic Rendering only when request-specific information is required.
+- Dynamic rendering should be the exception, not the default.
+- Avoid unnecessary calls to `cookies()`, `headers()`, or `searchParams` that force dynamic rendering.
+
+### Streaming
+
+- Use Suspense boundaries around slow asynchronous sections.
+- Stream independent content instead of blocking the entire page.
+- Split multiple slow sections into separate Suspense boundaries.
+
+### Data Fetching
+
+- Fetch independent resources in parallel using `Promise.all`.
+- Avoid sequential awaits unless dependencies exist.
+- Never fetch identical resources twice.
+- Prefer server-side fetching over client-side fetching.
+
+### Cache
+
+- Prefer cache over repeated computation.
+- Cache expensive operations whenever consistency allows.
+- Invalidate cache precisely.
+- Prefer tag-based invalidation instead of global invalidation.
+
+---
+
+## 3.7 Next.js File Convention
+
+### layout.tsx
+
+Use layout.tsx for UI that should persist between navigations.
+
+Examples:
+
+- navigation
+- sidebar
+- providers
+- authentication wrapper
+- theme provider
+
+Do not place page-specific state inside layouts.
+
+---
+
+### template.tsx
+
+Use template.tsx only when subtree remounting is desired.
+
+Examples:
+
+- restarting animations
+- clearing local state
+- resetting forms
+- restarting transitions
+
+Prefer layout.tsx whenever remount behavior is unnecessary.
+
+---
+
+### loading.tsx
+
+- Prefer skeleton loaders over spinners.
+- Skeletons should preserve final layout dimensions.
+- Prevent cumulative layout shift.
+
+---
+
+### error.tsx
+
+Every major route should have an error boundary.
+
+Error pages should:
+
+- allow retry
+- preserve navigation
+- avoid leaking implementation details
+
+---
+
+### not-found.tsx
+
+Missing resources should render not-found.tsx.
+
+Do not redirect missing pages to the home page.
+
+Return proper HTTP 404 status.
+
+---
+
+## 3.8 Image Optimization
+
+- Always prefer `next/image`.
+- Use `priority` only for LCP images.
+- Lazy load non-critical images.
+- Always specify width and height.
+- Prevent cumulative layout shift.
+- Prefer AVIF or WebP.
+- Avoid PNG unless transparency is required.
+- Decorative images should have empty alt text.
+- Meaningful images require descriptive alt text.
+- Do not optimize SVG through `next/image` unless necessary.
+
+---
+
+## 3.9 React Performance
+
+Before using memoization, optimize architecture.
+
+Prefer:
+
+- state colocation
+- composition
+- splitting components
+- reducing props
+- reducing context updates
+
+Use `useMemo` only for expensive calculations.
+
+Use `useCallback` only when referential stability matters.
+
+Never memoize prematurely.
+
+Reduce client-side JavaScript whenever possible.
+
+---
+
+## 3.10 React Patterns
+
+Prefer:
+
+- composition
+- custom hooks
+- compound components
+- headless components
+- controlled state
+
+Avoid:
+
+- prop drilling across many levels
+- giant components
+- duplicated state
+- duplicated effects
+
+Derived values should be computed instead of stored.
+
+---
+
+## 3.11 TanStack Query Best Practices
+
+Every query should define:
+
+- staleTime
+- gcTime
+- queryKey
+- retry strategy
+
+Use optimistic updates only when rollback is possible.
+
+Invalidate only affected queries.
+
+Never duplicate server state inside Zustand.
+
+Use prefetching for predictable navigation.
+
+Cancel obsolete requests.
+
+---
+
+## 3.12 Zustand Best Practices
+
+Zustand is for client UI state only.
+
+Allowed:
+
+- theme
+- modal state
+- sidebar state
+- wizard progress
+- UI preferences
+
+Forbidden:
+
+- API responses
+- server cache
+- pagination data
+- user profile fetched from backend
+
+Prefer slices over monolithic stores.
+
+Prefer selectors over direct state access.
+
+---
+
+## 3.13 Forms
+
+Prefer:
+
+- React Hook Form
+- Zod
+- Server Actions
+
+Validation schema should be the single source of truth.
+
+Infer types from Zod.
+
+Never duplicate validation rules.
+
+Prefer optimistic UI for fast interactions.
+
+---
+
+## 3.14 Accessibility
+
+Every interactive element must be keyboard accessible.
+
+Forms require labels.
+
+Dialogs require focus trapping.
+
+Images require alt text.
+
+Prefer semantic HTML over generic divs.
+
+Meet WCAG AA whenever practical.
+
+---
+
+## 3.15 Performance Budget
+
+AI should actively reduce:
+
+- bundle size
+- hydration cost
+- rerenders
+- memory allocation
+- network requests
+- layout shift
+- TTFB
+- LCP
+- INP
+
+Architecture improvements take precedence over memoization.
+
+Minimize client-side JavaScript.
+
+Prefer Server Components whenever possible.
+
 ---
 
 ## 4. Data
@@ -229,27 +482,28 @@
 
 ## 9. Prohibited Patterns
 
-| Forbidden | Replacement |
-|---|---|
-| `any` type | `unknown` + type guard |
-| `null` | `undefined` or `Option<T>` |
-| default exports | named exports |
-| `console.log` | `@repo/logger` |
-| direct Mongoose in services | Repository Pattern |
-| `// @ts-ignore` | Fix the type |
-| `!` (non-null assertion) | Proper narrowing |
-| `Object.assign` | Spread or `deepMerge` from `@repo/utils` |
-| magic strings/numbers | Constants or enums |
-| synchronous I/O | async/await |
-| nested ternaries | Early returns or switch |
-| `any` in generic constraints | Proper constraints |
-| direct `fetch` in components | Custom hooks with TanStack Query |
+| Forbidden                    | Replacement                              |
+| ---------------------------- | ---------------------------------------- |
+| `any` type                   | `unknown` + type guard                   |
+| `null`                       | `undefined` or `Option<T>`               |
+| default exports              | named exports                            |
+| `console.log`                | `@repo/logger`                           |
+| direct Mongoose in services  | Repository Pattern                       |
+| `// @ts-ignore`              | Fix the type                             |
+| `!` (non-null assertion)     | Proper narrowing                         |
+| `Object.assign`              | Spread or `deepMerge` from `@repo/utils` |
+| magic strings/numbers        | Constants or enums                       |
+| synchronous I/O              | async/await                              |
+| nested ternaries             | Early returns or switch                  |
+| `any` in generic constraints | Proper constraints                       |
+| direct `fetch` in components | Custom hooks with TanStack Query         |
 
 ---
 
 ## 10. Enforcement
 
 Violations of this constitution should be:
+
 1. Flagged in code review
 2. Documented as technical debt in STATUS.md
 3. Fixed before merging

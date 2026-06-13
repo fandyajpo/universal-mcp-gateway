@@ -9,7 +9,7 @@ import {
   passwordSchema,
   hexColorSchema,
   userSchema,
-  sessionSchema,
+  authSessionSchema,
   workspaceSchema,
   workspaceRoleSchema,
   documentSchema,
@@ -152,10 +152,10 @@ describe("userSchema", () => {
   });
 });
 
-describe("sessionSchema", () => {
+describe("authSessionSchema", () => {
   it("accepts valid session data", () => {
     expect(() =>
-      sessionSchema.parse({
+      authSessionSchema.parse({
         id: "sess-1",
         userId: "usr-1",
         token: "tok-123",

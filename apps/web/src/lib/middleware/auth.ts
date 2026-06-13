@@ -1,0 +1,87 @@
+import { Redis } from "@upstash/redis";
+
+const SESSION_COOKIE = "umgw_session";
+
+const SESSION_CACHE_PREFIX = "tenant:default:session:";
+
+interface CachedSession {
+  token: string;
+  userId: string;
+  email: string;
+  name: string;
+  image?: string | null;
+  workspaceId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  expiresAt: number;
+  createdAt: number;
+  isValid: boolean;
+}
+
+let redisClient: Redis | null = null;
+
+function getRedis(): Redis {
+  redisClient ??= new Redis({
+    url: process.env.REDIS_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? "",
+    token: process.env.REDIS_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  });
+  return redisClient;
+}
+
+export interface SessionValidationResult {
+  authenticated: boolean;
+  session: CachedSession | null;
+}
+
+export async function validateSession(request: Request): Promise<SessionValidationResult> {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const cookies = parseCookies(cookieHeader);
+  const token = cookies[SESSION_COOKIE];
+
+  if (!token) {
+    return { authenticated: false, session: null };
+  }
+
+  try {
+    const redis = getRedis();
+    const key = `${SESSION_CACHE_PREFIX}${token}`;
+    const session = await redis.get<CachedSession>(key);
+
+    if (!session) {
+      return { authenticated: false, session: null };
+    }
+
+    if (!session.isValid) {
+      return { authenticated: false, session: null };
+    }
+
+    if (session.expiresAt && Date.now() > session.expiresAt) {
+      return { authenticated: false, session: null };
+    }
+
+    return { authenticated: true, session };
+  } catch {
+    return { authenticated: false, session: null };
+  }
+}
+
+export function setSessionHeaders(response: { headers: Headers }, session: CachedSession): void {
+  response.headers.set("x-user-id", session.userId);
+  response.headers.set("x-workspace-id", session.workspaceId ?? "default");
+  response.headers.set("x-session-token", session.token.slice(0, 16));
+}
+
+function parseCookies(cookieHeader: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!cookieHeader) return cookies;
+
+  for (const part of cookieHeader.split(";")) {
+    const eqIndex = part.indexOf("=");
+    if (eqIndex === -1) continue;
+    const name = part.slice(0, eqIndex).trim();
+    const value = part.slice(eqIndex + 1).trim();
+    if (name) cookies[name] = decodeURIComponent(value);
+  }
+
+  return cookies;
+}

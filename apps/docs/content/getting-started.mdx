@@ -1,0 +1,83 @@
+---
+title: Getting Started
+description: Learn how to set up and configure the Universal MCP Gateway platform.
+---
+
+Welcome to the Universal MCP Gateway documentation. This guide will help you get started with the platform.
+
+## Quick Start
+
+Install the CLI tool and initialize your workspace:
+
+```bash
+npm install -g @universal-mcp-gateway/cli
+umgw init my-workspace
+cd my-workspace
+```
+
+## Configuration
+
+Create a configuration file:
+
+```yaml
+version: "1.0"
+workspace:
+  name: My Workspace
+  slug: my-workspace
+auth:
+  providers:
+    - email
+    - github
+    - google
+```
+
+## API Usage
+
+Here's how to make your first API call:
+
+```ts
+import { createClient } from "@universal-mcp-gateway/client";
+
+const client = createClient({
+  apiKey: process.env.UMGW_API_KEY,
+  workspace: "my-workspace",
+});
+
+const response = await client.chat.completions.create({
+  model: "gpt-4",
+  messages: [
+    { role: "user", content: "Hello, world!" },
+  ],
+});
+
+console.log(response.choices[0]?.message.content);
+```
+
+## TypeScript Types
+
+The platform provides full TypeScript support:
+
+```ts
+import type {
+  Workspace,
+  User,
+  ApiKey,
+  ChatCompletion,
+} from "@universal-mcp-gateway/types";
+
+async function getWorkspace(id: string): Promise<Workspace> {
+  const response = await fetch(`/api/workspaces/${id}`);
+  return response.json() as Promise<Workspace>;
+}
+```
+
+## Features
+
+- **AI Gateway**: Unified interface for 200+ LLMs
+- **MCP Gateway**: Model Context Protocol server
+- **RAG Engine**: Enterprise retrieval-augmented generation
+- **Connector Marketplace**: Pre-built integrations
+
+> The platform is designed to be extensible. You can create custom connectors and tools using the MCP protocol.
+
+For more information, check out the [API Reference](/docs/api/overview).

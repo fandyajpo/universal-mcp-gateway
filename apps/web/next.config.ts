@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
     "@repo/validation",
   ],
   experimental: {},
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : config.externals ? [config.externals] : []),
+        "bcrypt",
+        "@mapbox/node-pre-gyp",
+      ];
+    }
+    return config;
+  },
   logging: {
     fetches: {
       fullUrl: true,

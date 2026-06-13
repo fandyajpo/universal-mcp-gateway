@@ -1,7 +1,12 @@
 import { Inter } from "next/font/google";
 
-import type { Metadata } from "next";
+import { Footer } from "@/components/sections/footer";
+
 import "./globals.css";
+
+import { Header } from "@/components/sections/header";
+
+import type { Metadata } from "next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,7 +39,9 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <Header />
         <div id="main-content">{children}</div>
+        <Footer />
       </body>
     </html>
   );

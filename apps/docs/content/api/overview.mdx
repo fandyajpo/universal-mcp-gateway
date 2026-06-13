@@ -1,0 +1,106 @@
+---
+title: API Overview
+description: "Complete reference for the Universal MCP Gateway API. Authentication, endpoints, and usage examples."
+order: 1
+---
+
+The Universal MCP Gateway provides a comprehensive REST API for managing your workspace, integrating with AI models, and building custom applications.
+
+## Base URL
+
+```
+https://api.universal-mcp-gateway.com/v1
+```
+
+## Authentication
+
+All API requests require authentication via an API key:
+
+```bash
+curl -H "Authorization: Bearer $UMGW_API_KEY" \
+  https://api.universal-mcp-gateway.com/v1/workspaces
+```
+
+## Endpoints
+
+### Workspaces
+
+```ts
+// List all workspaces
+const workspaces = await api.workspaces.list();
+
+// Get a specific workspace
+const workspace = await api.workspaces.get("ws_123");
+
+// Create a new workspace
+const newWorkspace = await api.workspaces.create({
+  name: "My Workspace",
+  slug: "my-workspace",
+});
+```
+
+### Chat Completions
+
+```python
+import umgw
+
+client = umgw.Client(api_key="sk-...")
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain MCP protocol."},
+    ],
+    stream=True,
+)
+
+for chunk in response:
+    print(chunk.choices[0].delta.content, end="")
+```
+
+### Error Handling
+
+```json
+{
+  "error": {
+    "code": "rate_limit_exceeded",
+    "message": "Too many requests. Please try again in 30 seconds.",
+    "retry_after": 30
+  }
+}
+```
+
+## Rate Limiting
+
+| Tier | Rate Limit |
+|------|-----------|
+| Free | 100 req/min |
+| Pro | 1000 req/min |
+| Enterprise | Custom |
+
+## Pagination
+
+List endpoints support cursor-based pagination:
+
+```js
+const page1 = await api.workspaces.list({ limit: 10 });
+const page2 = await api.workspaces.list({
+  limit: 10,
+  cursor: page1.next_cursor,
+});
+```
+
+> **Note:** All timestamps are returned in ISO 8601 format (UTC).
+
+## SDK Support
+
+Official SDKs are available for:
+
+```bash
+npm install @universal-mcp-gateway/client    # TypeScript/JavaScript
+pip install universal-mcp-gateway            # Python
+go get github.com/universal-mcp-gateway/go   # Go
+```
+
+For detailed endpoint documentation, see the [Endpoints](/docs/api/endpoints) page.

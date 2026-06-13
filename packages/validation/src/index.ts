@@ -12,6 +12,14 @@ export {
 // Auth schemas
 export {
   userSchema,
+  authSessionSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  verifyEmailSchema,
+  mfaSetupSchema,
+  mfaVerifySchema,
+  oauthSchema,
   sessionSchema,
   workspaceSchema,
   workspaceMemberSchema,
@@ -106,6 +114,14 @@ export type {
 // Inferred types
 export type {
   UserSchema,
+  AuthSessionSchema,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  VerifyEmailInput,
+  MfaSetupInput,
+  MfaVerifyInput,
+  OAuthInput,
   SessionSchema,
   WorkspaceSchema,
   WorkspaceMemberSchema,

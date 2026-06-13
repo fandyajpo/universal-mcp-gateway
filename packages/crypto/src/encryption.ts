@@ -47,5 +47,5 @@ export function encryptObject(obj: unknown, key: string | Buffer): string {
 
 export function decryptObject(ciphertext: string, key: string | Buffer): unknown {
   const plaintext = decrypt(ciphertext, key);
-  return JSON.parse(plaintext) as T;
+  return JSON.parse(plaintext);
 }

@@ -2,11 +2,11 @@
   "name": "@repo/verify",
   "version": "0.0.1",
   "private": true,
-  "description": "Phase 00 verification suite — package contracts, dependency graph, architecture rules, cross-package integration, build integrity",
+  "description": "Verification suite — package contracts, dependency graph, architecture rules, cross-package integration, build integrity, Phase 01 app scaffolding",
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:ci": "vitest run contracts.test dependencies.test architecture.test",
+    "test:ci": "vitest run contracts.test dependencies.test architecture.test phase-01.test",
     "test:full": "vitest run"
   },
   "dependencies": {

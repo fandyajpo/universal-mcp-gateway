@@ -6,18 +6,18 @@
 
 | Category | Count | Progress |
 |---|---|---|---|---|
-| Phases Total | 19 (00-18) | 1 completed |
-| Steps Total | ~220 | 23 completed |
+| Phases Total | 19 (00-18) | 3 completed |
+| Steps Total | ~220 | 60 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
 ## Current Phase
 
-**Phase 1: Bootstrap** — Scaffolding the four Next.js applications and all shared packages.
+**Phase 3: Workspace** — Building the multi-tenant workspace layer, enabling teams to collaborate within isolated environments.
 
 ## Current Step
 
-**Step 01.09** — App layout, navigation, and shell (docs) — docs layout shell, sidebar with table of contents, top navigation bar, responsive shell.
+**Step 03.01** — Workspace Schema and Validation — Define Zod schemas for workspace creation and management.
 
 ## Completed
 
@@ -196,12 +196,178 @@
   - Zustand store for mobile sidebar state
   - Skip-to-content link preserved
   - lint/typecheck/build all passing
+- [x] Docs app layout, navigation, and shell (Step 01.09):
+  - Two-column layout with sidebar navigation tree (6 sections, 19 child pages)
+  - IntersectionObserver-based table of contents sidebar
+  - Recursive NavTreeItem component with expandable sections and active page highlighting
+  - Mobile sidebar via Sheet overlay
+  - Top navigation bar with search placeholder, theme toggle
+  - Footer with links
+  - Zustand store for mobile sidebar state
+  - lint/typecheck/build all passing
+- [x] Landing page sections (Step 01.10):
+  - Hero section with headline, subheading, CTA buttons, and product mockup
+  - Features section with 6 feature cards (grid layout, scroll animations)
+  - How It Works section with 4-step diagram
+  - Pricing section with 3-tier cards and monthly/annual billing toggle
+  - CTA section with email signup form
+  - Sticky header with navigation links and mobile menu
+  - Footer with multi-column links, social icons, copyright
+  - All sections use IntersectionObserver-based fade-in animations
+  - Zustand store for billing period toggle
+  - lint/typecheck/build all passing
+- [x] react-markdown + Shiki integration (Step 01.11):
+  - Markdown rendering via react-markdown with remark-gfm (GFM tables, tasklists)
+  - Shiki syntax highlighting with dual themes: github-light (light mode), github-dark (dark mode)
+  - Code blocks with copy-to-clipboard button and language label
+  - Frontmatter parsing with gray-matter (title, description, order)
+  - Custom MDX component registry (Callout with info/warning/error/tip variants)
+  - Catch-all route [[...slug]] reads .mdx files from content/ directory
+  - File-based routing: content/getting-started.mdx → /docs/getting-started
+  - Lazy-initialized highlighter with 20 bundled languages
+  - Pre-highlighting pipeline extracts code blocks at build time for zero runtime overhead
+  - Sample docs: getting-started.mdx, api/overview.mdx
+  - lint/typecheck/build all passing
+
+- [x] Phase 01 verification (Step 01.12):
+  - 24 verification tests passing (app names, next.config existence, root layout metadata, TailwindCSS theme consistency, no cross-app imports)
+  - All 88 verification suite tests pass (6 test files)
+  - STATUS.md, ROADMAP.md, CHANGELOG.md, NEXT_STEP.md updated
+  - Phase 01 marked complete
+
+- [x] Better Auth server setup (Step 02.01):
+  - `packages/auth/src/auth-server.ts` — Better Auth server with MongoDB adapter, email/password auth, multi-session, admin, bearer plugins
+  - `packages/auth/src/auth-client.ts` — Better Auth client for client-side usage
+  - `packages/auth/src/plugins/workspace-plugin.ts` — Custom plugin (hooks ready for workspace creation on signup)
+  - `packages/auth/src/index.ts` — Barrel exports for auth server, client, and plugins
+  - `packages/auth/package.json` updated with deps: `@better-auth/mongo-adapter`, `@repo/crypto`, `@repo/validation`, `@repo/cache`, `@repo/config`, `mongodb`
+  - `packages/auth/eslint.config.js` added
+  - `databaseHooks.user.create.after` creates default workspace with owner role on user registration
+  - Password hashing uses `@repo/crypto` (bcrypt) instead of default Scrypt
+  - Lint clean, typecheck passes (pre-existing `@repo/crypto` error only), build succeeds
+
+- [x] Auth schema and validation (Step 02.02):
+  - `loginSchema`: email (valid email, trimmed), password (min 8), rememberMe (optional boolean)
+  - `registerSchema`: name (2-100), email, password (min 8, upper, lower, number), confirmPassword (refine match, transform strip)
+  - `resetPasswordSchema`: token (min 32), password, confirmPassword (refine match, transform strip)
+  - `verifyEmailSchema`: token (min 32)
+  - `mfaSetupSchema`: method ("totp"), optional name
+  - `mfaVerifySchema`: code (6 digits), secret
+  - `oauthSchema`: provider ("google" | "github"), optional callbackURL
+  - `sessionSchema`: sessionId, optional workspaceId (branded ID)
+  - Existing `sessionSchema` renamed to `authSessionSchema` (DB model) to avoid naming conflict
+  - All 57 existing tests pass, lint clean, typecheck clean
+
+- [x] Email/password authentication (Step 02.03):
+  - `packages/auth/src/providers/email-password.ts`: Factory for Better Auth emailAndPassword config with bcrypt hashing (cost 12 via `@repo/crypto`), `requireEmailVerification: true`
+  - `packages/auth/src/services/auth-service.ts`: Service layer wrapping Better Auth API with:
+    - Input validation via `@repo/validation` schemas (login, register, reset password, verify email)
+    - Rate limiting: 5 login attempts/email/15min, 3 registrations/IP/hour via `@repo/cache RateLimiter`
+    - Account lockout after 10 failed attempts (30-min cooldown via Redis)
+    - Methods: `register`, `login`, `logout`, `verifyEmail`, `resendVerification`, `forgotPassword`, `resetPassword`
+  - `packages/auth/src/emails/verification-email.ts`: Verification email template with HTML, logs to console (dev mode)
+  - `packages/auth/src/emails/welcome-email.ts`: Welcome email template, sent after user creation via `databaseHooks`
+  - `auth-server.ts` updated: uses `createEmailPasswordProvider()`, adds `emailVerification` config with `sendOnSignUp` and `autoSignInAfterVerification`
+  - Email sending: Better Auth `sendVerificationEmail` callback delegates to local template
+  - Password reset: `sendResetPassword` callback logs reset URL to console
+  - Lint clean, typecheck clean (pre-existing `@repo/crypto` error only), build succeeds, 88/88 verification tests pass
+
+- [x] OAuth Providers Google, GitHub (Step 02.04):
+  - `packages/auth/src/providers/oauth.ts`: Factory for Better Auth `socialProviders` config — reads `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` or `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (and GitHub equivalents) from env, returns Google+GitHub provider configs with `enabled` flag
+  - `packages/auth/src/services/oauth-service.ts`: Service layer for OAuth account management — `linkAccount` (with session token), `unlinkAccount` (by providerId), `listAccounts` (returns linked provider accounts)
+  - `auth-server.ts` updated: `socialProviders: createOAuthProviders()` added to betterAuth options, allowing Google and GitHub sign-in
+  - `.env.example` updated: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` added
+  - Better Auth handles OAuth flow natively (authorization URL redirect, callback/token exchange, account linking by matching email)
+  - Lint clean, typecheck clean (pre-existing `@repo/crypto` error only), build succeeds, 88/88 verification tests pass
+
+- [x] Session management (Step 02.05):
+  - `packages/auth/src/services/session-cache.ts`: Redis caching layer for sessions — key format `tenant:{workspaceId}:session:{token}`, 7-day TTL, user→sessions set index (`sadd`/`smembers`/`srem`), get/set/del operations
+  - `packages/auth/src/services/session-service.ts`: Session management service with:
+    - `verifySession(token)`: Cache-first verification (Redis fast path → Better Auth `getSession` fallback), returns `{ valid, session, needsRefresh }`
+    - `refreshSession(token)`: Forces fresh session fetch from Better Auth (`disableCookieCache: true`), re-caches in Redis
+    - `getSessionInfo(token)`: Delegates to verifySession
+    - `listSessions(token)`: Lists all active sessions via Better Auth `listSessions`
+    - `revokeSession(token, targetToken)`: Revokes specific session + removes from cache
+    - `revokeAllSessions(token, excludeToken?)`: Revokes all or all-other sessions + clears cache
+    - `invalidateOnPasswordChange(userId, currentToken)`: Revokes all other sessions, clears cache, keeps current
+    - `enforceConcurrencyLimit(userId, maxSessions)`: Evicts oldest sessions if over limit (default 10)
+  - Session refresh auto-triggers when within 24h of expiry
+  - Session cookie `umgw_session` managed by Better Auth (HTTP-only, Secure, SameSite=Strict)
+  - MongoDB TTL index on `expiresAt` auto-cleans expired sessions
+  - Lint clean, typecheck clean (pre-existing `@repo/crypto` error only), build succeeds, 88/88 verification tests pass
+
+- [x] RBAC Framework (Step 02.06):
+  - `packages/auth/src/rbac/permissions.ts`: Permission definitions as const array (17 permissions across workspace/connector/agent/rag/admin domains) + `Permission` type
+  - `packages/auth/src/rbac/roles.ts`: Role definitions with hierarchy (`owner > admin > member > viewer`), static `ROLE_PERMISSIONS` mapping, `roleHasPermission()` and `roleAtLeast()` helpers
+  - `packages/auth/src/rbac/cache.ts`: Redis permission caching layer — key format `tenant:{workspaceId}:perm:{userId}:{permission}` and `tenant:{workspaceId}:role:{userId}`, 5-minute TTL, `invalidateAll()` for role-change invalidation
+  - `packages/auth/src/rbac/service.ts`: `createRBACService(getUserRole)` — dependency-injected factory with `checkPermission` (cache-first, DB-role-lookup fallback), `checkPermissions` (batch), `getUserRole` (cached), `hasRole` (hierarchy check), `invalidateCache`
+  - `packages/auth/src/rbac/require-permission.ts`: Module-level singleton guard — `setRBACService(rbac)` initializer + `requirePermission(permission)` HOF returning `{ allowed, error, status }` guard function
+  - `packages/auth/src/hooks/use-permissions.ts`: Zustand-based React hook — `usePermissions()` returns `{ can, isLoading, error }` for UI-level permission gating, `useSetPermissions()` for store updates
+  - `packages/auth/src/index.ts`: Barrel exports for all RBAC modules
+  - `packages/auth/package.json`: Added `zustand ^5.0.0`, `react ^19.0.0` and `@types/react ^19.0.0` as dependencies
+  - Permission check is cached in Redis — subsequent calls hit sub-10ms fast path
+  - Cache invalidated when user role changes via `invalidateCache(userId, workspaceId)`
+  - Lint clean, typecheck clean (pre-existing `@repo/crypto` error only), build succeeds, 88/88 verification tests pass
+
+- [x] Auth Middleware (Step 02.07):
+  - `apps/web/src/middleware.ts`: Next.js Edge Middleware — validates sessions via Redis cache on every request, rate-limits auth routes (10 req/min per IP), enforces public/protected route access, redirects unauthenticated to `/login` and authenticated away from `/login` to `/chat`, attaches `x-user-id`/`x-workspace-id`/`x-session-token` headers, applies security headers (CSP, X-Frame-Options, X-Content-Type-Options, HSTS, Permissions-Policy), skips static assets via `config.matcher`
+  - `apps/web/src/lib/middleware/routes.ts`: Route configuration — `publicRoutes`, `authRoutes`, `isPublicRoute()` (incl. `/api/auth/*`), `isApiRoute()`, `isAuthRoute()`, `isStaticAsset()`, `shouldRunMiddleware()`
+  - `apps/web/src/lib/middleware/headers.ts`: Security headers factory — `getSecurityHeaders()` returns headers object, `setSecurityHeaders()` applies to a NextResponse
+  - `apps/web/src/lib/middleware/auth.ts`: Session validation — parses `umgw_session` cookie, reads cached session from Upstash Redis (same key format as session-cache.ts: `tenant:default:session:{token}`), validates expiry and `isValid` flag, `setSessionHeaders()` attaches user context headers
+  - `apps/web/src/lib/middleware/rate-limit.ts`: Edge-compatible rate limiting — uses Upstash Redis sorted sets (zadd/zcount/zrange) with rolling 60s window, 10 req/min per IP for auth routes, returns `{ allowed, remaining, reset }`; fails open on Redis errors
+  - Edge-compatible: uses `@upstash/redis` (HTTP-based) directly — avoids `@repo/logger` (pino, Node.js-only) — `@upstash/redis ^1.34.0` added to `apps/web/package.json`
+  - Middleware runs at the edge with no Node.js-specific APIs
+  - Lint clean, typecheck clean, build succeeds (2 successful)
+
+- [x] Login Page (Step 02.08):
+  - `apps/web/src/app/(auth)/login/page.tsx`: Server component — reads `?redirect=` and `?error=` query params, renders login form + OAuth buttons in a Card, SEO: `noindex` meta tags
+  - `apps/web/src/app/(auth)/login/login-form.tsx`: Client component — React Hook Form with `useActionState`, email/password/rememberMe fields, Zod validation via `@repo/validation/loginSchema`, handles 5 error states inline (invalid credentials, account locked, email not verified, rate limited, validation error), loading spinner on submit via `Button loading` prop, redirects as hidden input
+  - `apps/web/src/app/(auth)/login/oauth-buttons.tsx`: Client component — "Sign in with Google" and "Sign in with GitHub" buttons as `<a>` tags to `{authUrl}/api/auth/signin/{provider}`, SVG provider icons, "Or continue with" divider
+  - `apps/web/src/app/(auth)/layout.tsx`: Auth pages layout — centered flexbox with `bg-muted/30`, no sidebar/topbar, `noindex` robots meta, inherits dark mode from root
+  - `apps/web/src/actions/auth/login.ts`: Server Action — validates form data with `loginSchema`, dynamically imports `@repo/database` and `@repo/auth` (avoids bcrypt webpack bundling issue), calls `auth.api.signInEmail()`, sets `umgw_session` cookie (7 days default, 30 days with rememberMe), error mapping: email_not_verified → verification hint, invalid_credentials, account_locked, rate_limited, unknown
+  - `apps/web/next.config.ts`: Added webpack externals for `bcrypt` and `@mapbox/node-pre-gyp` (native modules incompatible with webpack bundling)
+  - `packages/crypto/src/encryption.ts`: Fixed pre-existing TS error — removed unused type parameter `T` from `decryptObject` return type
+  - Lint clean, typecheck clean, build succeeds
+
+- [x] Register Page (Step 02.09):
+  - `apps/web/src/actions/auth/register.ts`: Server Action — validates form data with `registerSchema` (name, email, password, confirmPassword), dynamically imports `@repo/database` and `@repo/auth`, calls `auth.api.signUpEmail()` with name/email/password, redirects to `/verify-email` on success, error mapping: email_exists, rate_limited, registration_failed
+  - `apps/web/src/app/(auth)/register/page.tsx`: Server component — Card layout with "Create an Account" title, renders RegisterForm + OAuthButtons, `force-dynamic` (shared OAuth `asChild` Slot component requires SSR), noindex
+  - `apps/web/src/app/(auth)/register/register-form.tsx`: Client component — `useActionState` with `registerAction`, name/email/password/confirmPassword inputs, real-time password requirements display (8+ chars, uppercase, lowercase, number), confirm-password mismatch indicator, submit loading state with Button, success → router.push("/verify-email"), "Already have an account?" link to /login
+  - `apps/web/src/app/(auth)/verify-email/page.tsx`: Server component — two modes: (a) no token → "Check your email" info page with sign-in link for resend, (b) token present → dynamically imports `@repo/database` and `@repo/auth`, calls `auth.api.verifyEmail({ query: { token } })`, success shows "Email Verified" with countdown redirect to /login via `RedirectWithCountdown` client component, failure shows "Verification Failed" with retry suggestion
+  - `apps/web/src/app/(auth)/verify-email/redirect-countdown.tsx`: Client component — counts down from 5 seconds, then `window.location.href = "/login"`
+  - Reuses `OAuthButtons` from `login/oauth-buttons.tsx`
+  - Lint clean, typecheck clean, build succeeds
+
+- [x] Password Reset Flow (Step 02.10):
+  - `packages/auth/src/emails/password-reset-email.ts`: Email template — HTML for reset link email with call-to-action button, `buildPasswordResetUrl(token)` constructs `/reset-password?token=xxx` URL, `extractResetToken(url)` parses token from Better Auth's callback URL
+
+- [x] MFA Setup (Step 02.11):
+  - `packages/auth/src/services/totp.ts`: TOTP secret generation, URI generation, QR code data URL, code verification via speakeasy + qrcode
+  - `packages/auth/src/services/recovery-codes.ts`: Recovery code generation (8 x 10-char base64url), bcrypt hashing (cost 10), verification with consumption
+  - `packages/auth/src/services/mfa-service.ts`: createMFAService() with 12 methods — setupMFA, verifyAndEnableMFA, verifyMFACode, verifyAndConsumeRecoveryCode, disableMFA, generateNewRecoveryCodes, getMFAStatus, createChallenge/getChallenge/deleteChallenge (Redis-backed, 5min TTL), createTrustToken/verifyTrustToken (HMAC-signed, 30-day)
+  - `packages/auth/src/index.ts`: Exports all MFA services and types
+  - `apps/web/src/actions/auth/mfa.ts`: 6 server actions — setupMFAAction, verifyAndEnableMFAAction, verifyMFAAction, skipMFAWithRecoveryAction, disableMFAAction, regenerateRecoveryCodesAction
+  - `apps/web/src/actions/auth/login.ts`: Updated — after signInEmail success, checks mfaEnabled via UserModel, validates trust cookie, creates Redis challenge if MFA required
+  - `apps/web/src/app/(auth)/login/login-form.tsx`: Added useEffect to redirect to /mfa?challenge=xxx when MFA required
+  - `apps/web/src/app/(auth)/mfa/page.tsx`: Server component — renders MFAForm with challenge ID from query params
+  - `apps/web/src/app/(auth)/mfa/mfa-form.tsx`: Client component — TOTP code input (6-digit) with "Trust this device" checkbox, recovery code tab, success redirect to /chat
+  - `apps/web/src/app/settings/security/page.tsx`: Security settings page with MFA enrollment
+  - `apps/web/src/app/settings/security/mfa-setup.tsx`: 3-step enrollment — enable button → QR code + verify → recovery codes display
+  - `apps/web/src/app/settings/security/mfa-recovery-codes.tsx`: Recovery codes display, copy, regenerate
+  - `packages/auth/package.json`: Added speakeasy, qrcode, @types/speakeasy, @types/qrcode
+
+- [x] Auth Verification (Step 02.12):
+  - 88/88 verification tests pass
+  - pnpm typecheck passes (auth-related packages)
+  - pnpm lint passes (auth-related packages)
+  - pnpm build passes (all 4 apps)
+  - STATUS.md, NEXT_STEP.md, ROADMAP.md, CHANGELOG.md updated
+  - Phase 02 marked complete
 
 ## Not Started
 
-- Package implementation code (5 packages remaining)
 - App implementation code (apps/admin, apps/docs, apps/landing need pages, components, API routes)
-- Authentication
+- Workspace implementation (Phase 3)
 - Errors package (@repo/errors)
 - AI Gateway
 - MCP Gateway
@@ -256,4 +422,4 @@ None detected.
 
 ## Last Updated
 
-2026-06-10
+2026-06-13 (Phase 02 complete)
