@@ -26,6 +26,15 @@ export {
   workspaceRoleSchema,
 } from "./schemas/auth";
 
+// Workspace schemas
+export {
+  createWorkspaceSchema,
+  updateWorkspaceSchema,
+  workspaceSettingsSchema,
+  memberRoleSchema,
+  invitationSchema as sendInvitationSchema,
+} from "./schemas/workspace";
+
 // Document schemas
 export {
   documentSchema,
@@ -126,6 +135,13 @@ export type {
   WorkspaceSchema,
   WorkspaceMemberSchema,
 } from "./schemas/auth";
+export type {
+  CreateWorkspaceInput,
+  UpdateWorkspaceInput,
+  WorkspaceSettingsInput,
+  MemberRoleInput,
+  InvitationInput,
+} from "./schemas/workspace";
 export type {
   DocumentSchema,
   DocumentChunkSchema,

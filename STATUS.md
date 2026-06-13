@@ -7,7 +7,7 @@
 | Category | Count | Progress |
 |---|---|---|---|---|
 | Phases Total | 19 (00-18) | 3 completed |
-| Steps Total | ~220 | 60 completed |
+| Steps Total | ~220 | 66 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
@@ -17,7 +17,7 @@
 
 ## Current Step
 
-**Step 03.01** — Workspace Schema and Validation — Define Zod schemas for workspace creation and management.
+**Step 03.09** — Workspace Switcher — Build the workspace switcher dropdown.
 
 ## Completed
 
@@ -364,10 +364,95 @@
   - STATUS.md, NEXT_STEP.md, ROADMAP.md, CHANGELOG.md updated
   - Phase 02 marked complete
 
+- [x] Workspace Schema and Validation (Step 03.01):
+  - `packages/validation/src/schemas/workspace.ts`: 5 Zod schemas — `createWorkspaceSchema`, `updateWorkspaceSchema`, `workspaceSettingsSchema`, `memberRoleSchema`, `invitationSchema`
+  - `packages/validation/src/index.ts`: Barrel exports for new schemas and their inferred types
+  - Lint clean, typecheck clean, all 57 existing validation tests pass, build succeeds
+
+- [x] Workspace Repository (Step 03.02):
+  - `packages/database/src/models/workspace.ts`: Added `IWorkspaceMemberEntry` interface + embedded `workspaceMemberSchema` (userId, role, joinedAt, invitedBy, deletedAt), `members` array field on `IWorkspace`
+  - `packages/database/src/repositories/workspace.ts`: Added 9 methods — `findBySlug(slug, excludeId?)` with uniqueness check, `addMember` (upserts member document), `removeMember` (soft-deletes membership), `updateMemberRole`, `getMembers` (aggregation pipeline with $lookup + user detail join + pagination), `transferOwnership` (validates admin role), `archive`/`restore` (sets/clears deletedAt), `updateSettings` (partial $set merge into sub-document)
+  - `packages/database/src/index.ts`: Barrel exports for `IWorkspaceMemberEntry` and `MemberWithUser` types
+  - Lint clean, typecheck clean (pre-existing `mongodb-memory-server` error only)
+  - All methods are tenant-scoped via `TenantAwareRepository`
+
+- [x] Workspace Service (Step 03.03):
+  - `packages/auth/src/services/workspace-service.ts` — `createWorkspaceService` factory with 9 methods:
+    - `create(data, userId)`: generates unique slug, creates workspace, adds creator as `owner` member
+    - `getById(workspaceId, userId)`: returns workspace only if user is a member or owner
+    - `update(workspaceId, data, userId)`: RBAC-checked (admin+), slug uniqueness, field whitelist
+    - `archive(workspaceId, userId)`: soft-delete with admin check via `rbacService.hasRole`
+    - `listUserWorkspaces(userId)`: queries workspaces by member userId, sorted by `updatedAt` desc
+    - `addMember(workspaceId, email, role, inviterId)`: finds user by email, validates role, adds as member
+    - `removeMember(workspaceId, targetUserId, requesterId)`: admin check, blocks last-owner removal
+    - `transferOwnership(workspaceId, newOwnerId, currentOwnerId)`: verifies current owner, swaps roles (new→owner, old→admin)
+    - `updateSettings(workspaceId, settings, userId)`: admin check, delegates to repo partial merge
+  - `packages/auth/src/index.ts`: Barrel exports for `createWorkspaceService`, `WorkspaceService`, `WorkspaceServiceMethods`, `WorkspaceServiceResult`
+  - `packages/auth/package.json`: Added `@repo/utils` dependency
+  - Lint clean, typecheck clean (pre-existing `auth-server.ts` TS2742 error only)
+  - All methods use `@repo/logger` for structured logging, `WorkspaceRepository` (tenant-scoped), `UserRepository`, and RBAC via `RBACService`
+
+- [x] Workspace API Routes (Step 03.04):
+  - `apps/web/src/app/api/workspaces/route.ts` — POST create workspace (validated via `createWorkspaceSchema`), GET list user workspaces
+  - `apps/web/src/app/api/workspaces/[workspaceId]/route.ts` — GET workspace (membership check), PATCH update (admin RBAC via `rbacService.hasRole("admin")`), DELETE archive (admin check)
+  - `apps/web/src/app/api/workspaces/[workspaceId]/members/route.ts` — GET list members (paginated, role filterable), POST add member (via email + role, admin check)
+  - `apps/web/src/app/api/workspaces/[workspaceId]/members/[userId]/route.ts` — PATCH update member role (admin check, `workspaceRoleSchema` validation), DELETE remove member (admin check, last-owner guard)
+  - `apps/web/src/app/api/workspaces/[workspaceId]/transfer/route.ts` — POST transfer ownership (owner check, newOwnerId validation)
+  - `apps/web/src/app/api/workspaces/[workspaceId]/settings/route.ts` — PATCH update settings (admin check, partial merge)
+  - All routes: 401 for unauthenticated, 403 for unauthorized, validated with `@repo/validation` Zod schemas, dynamic `import()` for `@repo/database` + `@repo/auth` (bcrypt native module issue), `x-user-id` header from middleware
+  - Lint clean, typecheck clean, build succeeds
+
+- [x] Create Workspace Flow (Step 03.05):
+  - `apps/web/src/actions/workspace/create.ts` — Server action `createWorkspaceAction` (calls workspace service `create` via dynamic imports), `checkSlugAction` for debounced slug uniqueness check
+  - `apps/web/src/hooks/use-create-workspace.ts` — Client hook with debounced slug availability check (400ms), auto-generated slug from name, user-editable slug tracking
+  - `apps/web/src/app/_components/workspace/create-workspace-dialog.tsx` — Dialog wrapper with `DialogTrigger`, `DialogContent`, close-on-success
+  - `apps/web/src/app/_components/workspace/create-workspace-form.tsx` — Form with name/slug/description fields, error display, `useActionState`, redirect on success
+  - `apps/web/src/app/_components/workspace/avatar-upload.tsx` — Click-to-upload avatar with file reader preview, remove button, disabled state
+  - All components use named exports, follow existing patterns (useActionState, dynamic imports), client/server boundaries respected
+  - Lint clean, typecheck clean, build succeeds
+
+- [x] Workspace Settings Page (Step 03.06):
+  - `packages/auth/src/services/workspace-service.ts` — Added `restore` method (RBAC-checked admin restore)
+  - `apps/web/src/actions/workspace/update.ts` — Server actions `updateWorkspaceAction` (FormData, name/slug/description) and `updateSettingsAction` (feature flags)
+  - `apps/web/src/actions/workspace/archive.ts` — Server actions `archiveWorkspaceAction` and `restoreWorkspaceAction`
+  - `apps/web/src/app/settings/workspace/page.tsx` — Server component, fetches workspace via dynamic imports, renders three sections
+  - `apps/web/src/app/settings/workspace/general-settings.tsx` — Client form with pre-populated name/slug/description, slug uniqueness check (400ms debounce), auto-generation from name
+  - `apps/web/src/app/settings/workspace/danger-zone.tsx` — Archive with confirmation dialog, restore button (toggles based on `deletedAt` state)
+  - `apps/web/src/app/settings/workspace/feature-flags.tsx` — 4 toggleable flags (AI Chat, Knowledge Base, Connectors, Guest Access) stored via settings service
+  - All server actions use dynamic imports for `@repo/database` + `@repo/auth`, `x-user-id` header from middleware
+  - Server component uses dynamic imports and `headers()` for auth — same pattern as API routes
+  - Lint clean, typecheck clean (pre-existing TS2742 only), build succeeds
+
+- [x] Member Management (Step 03.07):
+  - `apps/web/src/actions/workspace/members.ts` — `changeMemberRoleAction` (validates admin via RBAC, calls repo.updateMemberRole) and `removeMemberAction` (validates via service.removeMember with last-owner guard)
+  - `apps/web/src/app/settings/workspace/members/page.tsx` — Server component, dynamic import of `@repo/database`, fetches workspace members via `workspaceRepo.getMembers`, verifies membership, passes data to table
+  - `apps/web/src/app/settings/workspace/members/members-table.tsx` — Client component with search (name/email), role filter tabs (All/Owner/Admin/Member/Viewer), pagination (20 per page), local state for mutations
+  - `apps/web/src/app/settings/workspace/members/member-row.tsx` — Row with avatar + initials, name, email, role badge (color-coded), owner badge, "Active" badge, joined date, Change Role/Remove action buttons (admin-only, hidden for owner)
+  - `apps/web/src/app/settings/workspace/members/change-role-dialog.tsx` — Dialog with role option cards (admin/member/viewer), permission explanation banner, confirm/cancel
+  - `apps/web/src/app/settings/workspace/members/remove-member-dialog.tsx` — Confirmation dialog with warning text
+  - All server actions use dynamic imports for `@repo/database` + `@repo/auth`, `x-user-id` header from middleware
+  - Server component uses dynamic imports and `headers()` for auth — same pattern as workspace settings page
+  - Lint clean, typecheck clean (pre-existing TS2742 only), build succeeds
+
+- [x] Invitation System (Step 03.08):
+  - `packages/database/src/models/invitation.ts` — Mongoose model: workspaceId, workspaceName, inviterId, inviteeEmail, role, token, message, status (pending/accepted/declined/cancelled/expired), expiresAt, indexes on workspaceId+status and inviteeEmail+workspaceId
+  - `packages/database/src/repositories/invitation.ts` — InvitationRepository (extends BaseRepository): findByToken (global), findByWorkspace (paginated, status-filtered), countByWorkspaceToday (rate limiting), updateStatus
+  - `packages/auth/src/emails/invitation-email.ts` — HTML email template with accept/decline links, dev-mode logging
+  - `packages/auth/src/services/invitation-service.ts` — createInvitationService: create (validates admin role, duplicate check, rate limit 20/day, 7-day TTL, sends email), accept (verifies token, email match, adds member via WorkspaceModel directly to avoid tenant scoping issue), decline, resend (new token + TTL), cancel, list, getByToken (auto-expires stale invitations)
+  - `apps/web/src/app/api/workspaces/[workspaceId]/invitations/route.ts` — GET (list pending, member-only), POST (create, admin-only, validated via sendInvitationSchema)
+  - `apps/web/src/app/api/invitations/[token]/route.ts` — GET (fetch by token), POST (accept/decline by action body field)
+  - `apps/web/src/actions/workspace/members.ts` — Added inviteMemberAction (calls service.create), cancelInvitationAction, resendInvitationAction
+  - `apps/web/src/app/settings/workspace/members/invite-dialog.tsx` — Dialog with email, role cards (admin/member/viewer with descriptions, "Recommended" badge), optional message, success/error states
+  - `apps/web/src/app/settings/workspace/members/invitations-list.tsx` — Pending invitations list with status badge, resend/cancel actions (admin-only), fetched from API route
+  - `apps/web/src/app/invitation/[token]/page.tsx` — Server component: loads invitation by token, handles not-found/expired/non-pending states, redirects unauthenticated to login with redirect param, renders InvitationActions
+  - `apps/web/src/app/invitation/[token]/invitation-actions.tsx` — Client component: Accept/Decline buttons, success/declined confirmation states, error handling, fetch-based POST to /api/invitations/[token]
+  - All server actions/API routes use dynamic imports for `@repo/database` + `@repo/auth`, `x-user-id` header from middleware
+  - Lint clean, typecheck clean, build succeeds
+
 ## Not Started
 
 - App implementation code (apps/admin, apps/docs, apps/landing need pages, components, API routes)
-- Workspace implementation (Phase 3)
+- Errors package (@repo/errors)
 - Errors package (@repo/errors)
 - AI Gateway
 - MCP Gateway
@@ -422,4 +507,4 @@ None detected.
 
 ## Last Updated
 
-2026-06-13 (Phase 02 complete)
+2026-06-13 (Step 03.08 complete)

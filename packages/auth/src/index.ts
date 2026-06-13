@@ -20,6 +20,8 @@ export { createSessionCache } from "./services/session-cache";
 export type { SessionCache, CachedSession } from "./services/session-cache";
 export { createSessionService } from "./services/session-service";
 export type { SessionService, SessionServiceMethods, SessionInfo, VerifySessionResult } from "./services/session-service";
+export { createWorkspaceService } from "./services/workspace-service";
+export type { WorkspaceService, WorkspaceServiceMethods, WorkspaceServiceResult } from "./services/workspace-service";
 export { sendVerificationEmail, buildVerificationEmailUrl } from "./emails/verification-email";
 export type { VerificationEmailParams } from "./emails/verification-email";
 export { sendWelcomeEmail } from "./emails/welcome-email";
@@ -37,3 +39,7 @@ export type { RBACService, RBACServiceMethods, GetUserRoleFn } from "./rbac/serv
 export { requirePermission, setRBACService } from "./rbac/require-permission";
 export type { PermissionGuard } from "./rbac/require-permission";
 export { usePermissions, useSetPermissions } from "./hooks/use-permissions";
+export { sendInvitationEmail } from "./emails/invitation-email";
+export type { InvitationEmailParams } from "./emails/invitation-email";
+export { createInvitationService } from "./services/invitation-service";
+export type { InvitationService, InvitationServiceResult, InvitationServiceMethods } from "./services/invitation-service";

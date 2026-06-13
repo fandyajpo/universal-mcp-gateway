@@ -1,0 +1,150 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { updateWorkspaceSchema } from "@repo/validation";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ workspaceId: string }> },
+): Promise<NextResponse> {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { workspaceId } = await params;
+
+  try {
+    const [{ connect, WorkspaceRepository, UserRepository }, { createWorkspaceService, createRBACService }] =
+      await Promise.all([import("@repo/database"), import("@repo/auth")]);
+
+    await connect();
+
+    const userRepo = new UserRepository();
+    const workspaceRepo = new WorkspaceRepository(userId);
+    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
+      const ws = await workspaceRepo.findById(wid);
+      if (!ws) return null;
+      if (ws.ownerId === uid) return "owner" as const;
+      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
+      return member?.role ?? null;
+    };
+    const rbac = createRBACService(getUserRole);
+    const service = createWorkspaceService(workspaceRepo, userRepo, rbac);
+
+    const result = await service.getById(workspaceId, userId);
+    if (!result.success) {
+      const code = result.code === "FORBIDDEN" ? 403 : 404;
+      return NextResponse.json({ data: null, error: result.error }, { status: code });
+    }
+
+    return NextResponse.json({ data: result.data, error: null });
+  } catch (error) {
+    return NextResponse.json(
+      { data: null, error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ workspaceId: string }> },
+): Promise<NextResponse> {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { workspaceId } = await params;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ data: null, error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = updateWorkspaceSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { data: null, error: parsed.error.errors[0]?.message ?? "Validation failed" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const [{ connect, WorkspaceRepository, UserRepository }, { createWorkspaceService, createRBACService }] =
+      await Promise.all([import("@repo/database"), import("@repo/auth")]);
+
+    await connect();
+
+    const userRepo = new UserRepository();
+    const workspaceRepo = new WorkspaceRepository(userId);
+    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
+      const ws = await workspaceRepo.findById(wid);
+      if (!ws) return null;
+      if (ws.ownerId === uid) return "owner" as const;
+      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
+      return member?.role ?? null;
+    };
+    const rbac = createRBACService(getUserRole);
+    const service = createWorkspaceService(workspaceRepo, userRepo, rbac);
+
+    const result = await service.update(workspaceId, parsed.data, userId);
+    if (!result.success) {
+      const code = result.code === "FORBIDDEN" ? 403 : result.code === "CONFLICT" ? 409 : result.code === "NOT_FOUND" ? 404 : 400;
+      return NextResponse.json({ data: null, error: result.error }, { status: code });
+    }
+
+    return NextResponse.json({ data: result.data, error: null });
+  } catch (error) {
+    return NextResponse.json(
+      { data: null, error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ workspaceId: string }> },
+): Promise<NextResponse> {
+  const userId = request.headers.get("x-user-id");
+  if (!userId) {
+    return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { workspaceId } = await params;
+
+  try {
+    const [{ connect, WorkspaceRepository, UserRepository }, { createWorkspaceService, createRBACService }] =
+      await Promise.all([import("@repo/database"), import("@repo/auth")]);
+
+    await connect();
+
+    const userRepo = new UserRepository();
+    const workspaceRepo = new WorkspaceRepository(userId);
+    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
+      const ws = await workspaceRepo.findById(wid);
+      if (!ws) return null;
+      if (ws.ownerId === uid) return "owner" as const;
+      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
+      return member?.role ?? null;
+    };
+    const rbac = createRBACService(getUserRole);
+    const service = createWorkspaceService(workspaceRepo, userRepo, rbac);
+
+    const result = await service.archive(workspaceId, userId);
+    if (!result.success) {
+      const code = result.code === "FORBIDDEN" ? 403 : 404;
+      return NextResponse.json({ data: null, error: result.error }, { status: code });
+    }
+
+    return NextResponse.json({ data: null, error: null });
+  } catch (error) {
+    return NextResponse.json(
+      { data: null, error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
+}

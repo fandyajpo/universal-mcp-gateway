@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { useLayoutStore } from "@/lib/store/layout";
 
+import { WorkspaceSwitcher } from "./workspace-switcher";
 import { cn } from "@repo/ui";
 
 interface NavItem {
@@ -93,27 +94,16 @@ function DesktopSidebar(): React.ReactNode {
         sidebarCollapsed ? "w-[60px]" : "w-[280px]",
       )}
     >
-      <div className="flex h-14 items-center border-b px-4">
-        <Link
-          href="/"
-          className={cn(
-            "flex items-center gap-2 font-semibold",
-            sidebarCollapsed && "justify-center",
-          )}
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
-            U
-          </div>
-          {!sidebarCollapsed && (
-            <span className="text-sm">Universal MCP</span>
-          )}
-        </Link>
+      <div className="flex h-14 items-center gap-2 border-b px-4">
+        <div className="flex-1">
+          <WorkspaceSwitcher collapsed={sidebarCollapsed} />
+        </div>
         <button
           type="button"
           onClick={toggleSidebarCollapsed}
           className={cn(
             "rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-            sidebarCollapsed ? "mx-auto" : "ml-auto",
+            sidebarCollapsed && "mx-auto",
           )}
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

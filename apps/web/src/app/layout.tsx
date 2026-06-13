@@ -1,6 +1,7 @@
 import { Inter } from "next/font/google";
 
 import { LayoutShell } from "@/components/layout/layout-shell";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 import "../styles/globals.css";
 import type { Metadata } from "next";
@@ -35,7 +36,9 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <LayoutShell>{children}</LayoutShell>
+        <QueryProvider>
+          <LayoutShell>{children}</LayoutShell>
+        </QueryProvider>
       </body>
     </html>
   );
