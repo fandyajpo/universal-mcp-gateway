@@ -6,11 +6,48 @@ const RATE_LIMIT_MAX = 10;
 let redisClient: Redis | null = null;
 
 function getRedis(): Redis {
-  redisClient ??= new Redis({
-    url: process.env.REDIS_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? "",
-    token: process.env.REDIS_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
-  });
+  const { restUrl, token } = resolveRedisConfig();
+  redisClient ??= new Redis({ url: restUrl, token });
   return redisClient;
+}
+
+function resolveRedisConfig(): { restUrl: string; token: string } {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL ?? "";
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
+  if (upstashUrl && upstashToken) {
+    return { restUrl: upstashUrl, token: upstashToken };
+  }
+
+  const redisUrl = (process.env.REDIS_URL ?? "").trim();
+  if (redisUrl.startsWith("redis://")) {
+    try {
+      const parsed = new URL(redisUrl);
+      return {
+        restUrl: `https://${parsed.hostname}`,
+        token: parsed.password ?? "",
+      };
+    } catch {
+      return { restUrl: "", token: "" };
+    }
+  }
+
+  if (redisUrl.startsWith("rediss://")) {
+    try {
+      const parsed = new URL(redisUrl);
+      return {
+        restUrl: `https://${parsed.hostname}`,
+        token: parsed.password ?? "",
+      };
+    } catch {
+      return { restUrl: "", token: "" };
+    }
+  }
+
+  if (redisUrl.startsWith("https://")) {
+    return { restUrl: redisUrl, token: process.env.REDIS_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "" };
+  }
+
+  return { restUrl: "", token: "" };
 }
 
 function rateLimitKey(ip: string, pathname: string): string {
@@ -44,6 +81,7 @@ export async function checkRateLimit(ip: string, pathname: string): Promise<Rate
 
     return { allowed: true, remaining: RATE_LIMIT_MAX - count - 1, reset: now + RATE_LIMIT_WINDOW };
   } catch {
+    console.warn("rate limiter failed, allowing request through");
     return { allowed: true, remaining: 1, reset: 0 };
   }
 }

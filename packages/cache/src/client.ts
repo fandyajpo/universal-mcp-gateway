@@ -1,8 +1,8 @@
 import { Redis } from "@upstash/redis";
 
 import type { CacheConfig, HealthCheckResult } from "./types";
-import { createLogger } from "@repo/logger";
 import { getConfig } from "@repo/config";
+import { createLogger } from "@repo/logger";
 
 const logger = createLogger("cache-client");
 

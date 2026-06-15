@@ -1,12 +1,11 @@
-import { randomBytes } from "node:crypto";
-
-import type { InvitationRepository, UserRepository, WorkspaceRepository, IInvitation } from "@repo/database";
-import { WorkspaceModel } from "@repo/database";
-import { createLogger } from "@repo/logger";
-import { WorkspaceRole } from "@repo/types";
+import { randomBytes, createHash } from "node:crypto";
 
 import { sendInvitationEmail } from "../emails/invitation-email";
 import type { RBACService } from "../rbac/service";
+import { WorkspaceModel, InvitationModel } from "@repo/database";
+import type { InvitationRepository, UserRepository, WorkspaceRepository, IInvitation } from "@repo/database";
+import { createLogger } from "@repo/logger";
+import { WorkspaceRole } from "@repo/types";
 
 const logger = createLogger("@repo/auth:invitation-service");
 
@@ -51,6 +50,10 @@ export function createInvitationService(
     return randomBytes(32).toString("hex");
   }
 
+  function hashToken(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
   async function create(data: {
     workspaceId: string;
     workspaceName: string;
@@ -77,7 +80,7 @@ export function createInvitationService(
 
       const existingUser = await userRepo.findByEmail(data.inviteeEmail);
       if (existingUser) {
-        const targetUserId = String((existingUser as unknown as { _id: string })._id);
+        const targetUserId = (existingUser as unknown as { _id: string })._id;
         const alreadyMember = workspace.members?.some(
           (m) => m.userId === targetUserId && !m.deletedAt,
         );
@@ -90,7 +93,7 @@ export function createInvitationService(
         workspaceId: data.workspaceId,
         inviteeEmail: data.inviteeEmail,
         status: "pending",
-      } as never);
+      });
       if (existingPending) {
         return { success: false, error: "An invitation has already been sent to this email", code: "CONFLICT" };
       }
@@ -107,13 +110,16 @@ export function createInvitationService(
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
+      const rawToken = generateToken();
+      const hashedToken = hashToken(rawToken);
+
       const invitation = await invitationRepo.create({
         workspaceId: data.workspaceId,
         workspaceName: data.workspaceName,
         inviterId: data.inviterId,
         inviteeEmail: data.inviteeEmail,
         role: data.role as (typeof WorkspaceRole)[keyof typeof WorkspaceRole],
-        token: generateToken(),
+        token: hashedToken,
         message: data.message,
         status: "pending",
         expiresAt,
@@ -125,15 +131,15 @@ export function createInvitationService(
           inviterName: "A workspace admin",
           workspaceName: data.workspaceName,
           role: data.role,
-          token: invitation.token,
+          token: rawToken,
           message: data.message,
         });
       } catch (emailError) {
-        logger.warn({ error: emailError, invitationId: String((invitation as unknown as { _id: string })._id) }, "failed to send invitation email");
+        logger.warn({ error: emailError, invitationId: (invitation as unknown as { _id: string })._id }, "failed to send invitation email");
       }
 
       logger.info({ workspaceId: data.workspaceId, inviteeEmail: data.inviteeEmail, inviterId: data.inviterId }, "invitation created");
-      return { success: true, data: invitation };
+      return { success: true, data: { ...invitation, token: rawToken } };
     } catch (error) {
       logger.error({ error, workspaceId: data.workspaceId }, "invitation creation failed");
       return { success: false, error: "Failed to create invitation", code: "INTERNAL_ERROR" };
@@ -149,35 +155,30 @@ export function createInvitationService(
 
       if (invitation.status === "pending" && invitation.expiresAt < new Date()) {
         await invitationRepo.updateStatus(
-          String((invitation as unknown as { _id: string })._id),
+          (invitation as unknown as { _id: string })._id,
           "expired",
         );
         invitation.status = "expired";
       }
 
-      return { success: true, data: invitation };
+      return { success: true, data: { ...invitation, token } };
     } catch (error) {
-      logger.error({ error, token }, "failed to get invitation by token");
+      logger.error({ error, token: token.slice(0, 8) }, "failed to get invitation by token");
       return { success: false, error: "Failed to get invitation", code: "INTERNAL_ERROR" };
     }
   }
 
   async function accept(token: string, userId: string): Promise<InvitationServiceResult<void>> {
     try {
+      const hashedToken = hashToken(token);
       const invitation = await invitationRepo.findByToken(token);
       if (!invitation) {
         return { success: false, error: "Invitation not found", code: "NOT_FOUND" };
       }
 
-      if (invitation.status !== "pending") {
-        return { success: false, error: `Invitation is ${invitation.status}, not pending`, code: "BAD_REQUEST" };
-      }
-
       if (invitation.expiresAt < new Date()) {
-        await invitationRepo.updateStatus(
-          String((invitation as unknown as { _id: string })._id),
-          "expired",
-        );
+        const invitationId = (invitation as unknown as { _id: string })._id;
+        await invitationRepo.updateStatus(invitationId, "expired");
         return { success: false, error: "Invitation has expired", code: "BAD_REQUEST" };
       }
 
@@ -207,6 +208,16 @@ export function createInvitationService(
         return { success: false, error: "You are already a member of this workspace", code: "CONFLICT" };
       }
 
+      const claimed = await InvitationModel.findOneAndUpdate(
+        { _id: (invitation as unknown as { _id: string })._id, status: "pending" },
+        { $set: { status: "accepted", acceptedAt: new Date(), token: hashedToken } },
+        { new: true },
+      ).lean();
+
+      if (!claimed) {
+        return { success: false, error: "Invitation has already been accepted", code: "CONFLICT" };
+      }
+
       const entry = {
         userId,
         role: invitation.role,
@@ -214,43 +225,38 @@ export function createInvitationService(
       };
 
       await WorkspaceModel.updateOne(
-        { _id: invitation.workspaceId },
+        { _id: invitation.workspaceId, "members.userId": { $ne: userId } },
         { $push: { members: entry }, $inc: { memberCount: 1 } },
       );
 
-      const invitationId = String((invitation as unknown as { _id: string })._id);
-      await invitationRepo.updateStatus(invitationId, "accepted", {
-        acceptedAt: new Date(),
-      } as Partial<IInvitation>);
-
-      logger.info({ workspaceId: invitation.workspaceId, userId, token }, "invitation accepted");
+      logger.info({ workspaceId: invitation.workspaceId, userId }, "invitation accepted");
       return { success: true };
     } catch (error) {
-      logger.error({ error, token }, "invitation acceptance failed");
+      logger.error({ error, token: token.slice(0, 8) }, "invitation acceptance failed");
       return { success: false, error: "Failed to accept invitation", code: "INTERNAL_ERROR" };
     }
   }
 
   async function decline(token: string): Promise<InvitationServiceResult<void>> {
     try {
-      const invitation = await invitationRepo.findByToken(token);
-      if (!invitation) {
-        return { success: false, error: "Invitation not found", code: "NOT_FOUND" };
+      const hashedToken = hashToken(token);
+      const claimed = await InvitationModel.findOneAndUpdate(
+        { token: hashedToken, status: "pending" },
+        { $set: { status: "declined", declinedAt: new Date() } },
+      ).lean();
+
+      if (!claimed) {
+        const existing = await invitationRepo.findByToken(token);
+        if (!existing) {
+          return { success: false, error: "Invitation not found", code: "NOT_FOUND" };
+        }
+        return { success: false, error: `Invitation is ${existing.status}, not pending`, code: "BAD_REQUEST" };
       }
 
-      if (invitation.status !== "pending") {
-        return { success: false, error: `Invitation is ${invitation.status}, not pending`, code: "BAD_REQUEST" };
-      }
-
-      const invitationId = String((invitation as unknown as { _id: string })._id);
-      await invitationRepo.updateStatus(invitationId, "declined", {
-        declinedAt: new Date(),
-      } as Partial<IInvitation>);
-
-      logger.info({ workspaceId: invitation.workspaceId, token }, "invitation declined");
+      logger.info({ workspaceId: (claimed as unknown as { workspaceId: string }).workspaceId }, "invitation declined");
       return { success: true };
     } catch (error) {
-      logger.error({ error, token }, "invitation decline failed");
+      logger.error({ error, token: token.slice(0, 8) }, "invitation decline failed");
       return { success: false, error: "Failed to decline invitation", code: "INTERNAL_ERROR" };
     }
   }
@@ -274,24 +280,23 @@ export function createInvitationService(
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + INVITATION_TTL_DAYS);
 
-      const invitationId = String((invitation as unknown as { _id: string })._id);
+      const rawToken = generateToken();
+      const hashedToken = hashToken(rawToken);
+
+      const invitationId = (invitation as unknown as { _id: string })._id;
       await invitationRepo.updateStatus(invitationId, "pending", {
         expiresAt,
-        token: generateToken(),
-      } as Partial<IInvitation>);
-
-      const updated = await invitationRepo.findById(invitationId);
+        token: hashedToken,
+      });
 
       try {
-        if (updated) {
-          sendInvitationEmail({
-            to: invitation.inviteeEmail,
-            inviterName: "A workspace admin",
-            workspaceName: invitation.workspaceName,
-            role: invitation.role,
-            token: updated.token,
-          });
-        }
+        sendInvitationEmail({
+          to: invitation.inviteeEmail,
+          inviterName: "A workspace admin",
+          workspaceName: invitation.workspaceName,
+          role: invitation.role,
+          token: rawToken,
+        });
       } catch (emailError) {
         logger.warn({ error: emailError, token }, "failed to resend invitation email");
       }
@@ -318,7 +323,7 @@ export function createInvitationService(
 
       await invitationRepo.updateStatus(invitationId, "cancelled", {
         cancelledAt: new Date(),
-      } as Partial<IInvitation>);
+      });
 
       logger.info({ invitationId, workspaceId: invitation.workspaceId }, "invitation cancelled");
       return { success: true };

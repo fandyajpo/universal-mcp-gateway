@@ -117,8 +117,13 @@ export function createAuthService(auth: AuthServer): AuthServiceMethods {
     }
 
     if (ip) {
-      const rateKey = registerRateKey(ip);
-      const rateResult = await rateLimiter.check(rateKey, REGISTER_RATE_LIMIT, REGISTER_RATE_WINDOW);
+      let rateResult: { allowed: boolean; remaining: number; resetAt: number };
+      try {
+        rateResult = await rateLimiter.check(registerRateKey(ip), REGISTER_RATE_LIMIT, REGISTER_RATE_WINDOW);
+      } catch (rateError) {
+        logger.warn({ error: rateError, ip }, "register rate limiter failed, allowing request");
+        rateResult = { allowed: true, remaining: 1, resetAt: Date.now() };
+      }
       if (!rateResult.allowed) {
         logger.warn({ ip }, "registration rate limit exceeded");
         return {
@@ -167,8 +172,13 @@ export function createAuthService(auth: AuthServer): AuthServiceMethods {
     const lockoutCheck = await checkAccountLockout(parsed.data.email);
     if (lockoutCheck) return lockoutCheck;
 
-    const rateKey = loginRateKey(parsed.data.email);
-    const rateResult = await rateLimiter.check(rateKey, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW);
+    let rateResult: { allowed: boolean; remaining: number; resetAt: number };
+    try {
+      rateResult = await rateLimiter.check(loginRateKey(parsed.data.email), LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW);
+    } catch (rateError) {
+      logger.warn({ error: rateError, email: parsed.data.email }, "login rate limiter failed, allowing request");
+      rateResult = { allowed: true, remaining: 1, resetAt: Date.now() };
+    }
     if (!rateResult.allowed) {
       logger.warn({ email: parsed.data.email }, "login rate limit exceeded");
       return {

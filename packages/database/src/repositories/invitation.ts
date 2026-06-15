@@ -15,7 +15,7 @@ export class InvitationRepository extends BaseRepository<IInvitation> {
   }
 
   async findByToken(token: string): Promise<IInvitation | null> {
-    return this.findOne({ token } as FilterQuery<IInvitation>);
+    return this.findOne({ token });
   }
 
   async findByWorkspace(
@@ -45,7 +45,7 @@ export class InvitationRepository extends BaseRepository<IInvitation> {
     return this.count({
       workspaceId,
       createdAt: { $gte: startOfDay },
-    } as FilterQuery<IInvitation>);
+    });
   }
 
   async updateStatus(
@@ -53,6 +53,6 @@ export class InvitationRepository extends BaseRepository<IInvitation> {
     status: IInvitation["status"],
     extra?: Partial<IInvitation>,
   ): Promise<IInvitation | null> {
-    return this.updateById(id, { status, ...extra } as Partial<IInvitation>);
+    return this.updateById(id, { status, ...extra });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createGetUserRole } from "../../../../../../lib/middleware/get-user-role";
 import { workspaceRoleSchema } from "@repo/validation";
 
 export async function PATCH(
@@ -38,13 +39,7 @@ export async function PATCH(
     await connect();
 
     const workspaceRepo = new WorkspaceRepository(requesterId);
-    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
-      const ws = await workspaceRepo.findById(wid);
-      if (!ws) return null;
-      if (ws.ownerId === uid) return "owner" as const;
-      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
-      return member?.role ?? null;
-    };
+    const getUserRole = createGetUserRole(workspaceRepo);
     const rbac = createRBACService(getUserRole);
 
     const isAdmin = await rbac.hasRole(requesterId, workspaceId, "admin");
@@ -56,6 +51,8 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ data: null, error: "Member not found" }, { status: 404 });
     }
+
+    await rbac.invalidateCache(targetUserId, workspaceId);
 
     return NextResponse.json({ data: null, error: null });
   } catch (error) {
@@ -85,13 +82,7 @@ export async function DELETE(
 
     const userRepo = new UserRepository();
     const workspaceRepo = new WorkspaceRepository(requesterId);
-    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
-      const ws = await workspaceRepo.findById(wid);
-      if (!ws) return null;
-      if (ws.ownerId === uid) return "owner" as const;
-      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
-      return member?.role ?? null;
-    };
+    const getUserRole = createGetUserRole(workspaceRepo);
     const rbac = createRBACService(getUserRole);
     const service = createWorkspaceService(workspaceRepo, userRepo, rbac);
 

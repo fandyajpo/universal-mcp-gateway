@@ -53,7 +53,17 @@ const workspaceSchema = new Schema<IWorkspace>({
   deletedAt: { type: Date, default: null },
 });
 
-workspaceSchema.index({ isActive: 1, plan: 1 });
+workspaceSchema.index({ isActive: 1, plan: 1 }, { name: "idx_workspaces_isActive_plan" });
+workspaceSchema.index({ ownerId: 1, deletedAt: 1 }, { name: "idx_workspaces_ownerId_deletedAt" });
+workspaceSchema.index({ "members.userId": 1, "members.deletedAt": 1 }, { name: "idx_workspaces_membersUserId_membersDeletedAt" });
+workspaceSchema.index({ tenantId: 1, deletedAt: 1 }, { name: "idx_workspaces_tenantId_deletedAt" });
+workspaceSchema.index(
+  { name: "text", description: "text" },
+  {
+    name: "idx_workspaces_name_text_description_text",
+    weights: { name: 10, description: 5 },
+  },
+);
 
 timestampsPlugin(workspaceSchema);
 toJSONTransform(workspaceSchema);

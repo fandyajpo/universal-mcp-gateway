@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Workspace CRUD API with Zod validation and RBAC enforcement
+- Create workspace flow with dialog, slug uniqueness check, avatar upload
+- Workspace settings page (name, slug, description, feature flags, archive/restore)
+- Member management with role assignment, removal, last-owner guard
+- Invitation system: email invite with accept/decline, 20/day rate limit, 7-day expiry
+- Workspace switcher dropdown with Zustand persistence and React Query
+- Workspace settings sub-navigation for General/Members tabs
+- React Query provider for client-side data fetching
+
+### Fixed
+
+- Removed unnecessary type assertions in invitation and workspace repositories
+- Removed redundant String() calls in invitation service
+- Fixed import ordering in invitation service
+
 - Phase 0: Project foundation
   - TurboRepo monorepo with pnpm workspace
   - TypeScript configuration with strict mode

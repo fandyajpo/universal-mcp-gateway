@@ -30,7 +30,8 @@ const sessionSchema = new Schema<ISession>({
   deletedAt: { type: Date, default: null },
 });
 
-sessionSchema.index({ userId: 1, isValid: 1 });
+sessionSchema.index({ userId: 1, isValid: 1 }, { name: "idx_sessions_userId_isValid" });
+sessionSchema.index({ tenantId: 1, lastActivityAt: 1 }, { name: "idx_sessions_tenantId_lastActivityAt" });
 
 timestampsPlugin(sessionSchema);
 toJSONTransform(sessionSchema);

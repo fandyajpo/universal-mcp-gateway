@@ -32,8 +32,11 @@ const apiKeySchema = new Schema<IApiKey>({
   deletedAt: { type: Date, default: null },
 });
 
-apiKeySchema.index({ tenantId: 1, isActive: 1 });
-apiKeySchema.index({ expiresAt: 1 }, { partialFilterExpression: { expiresAt: { $exists: true } } });
+apiKeySchema.index({ tenantId: 1, isActive: 1 }, { name: "idx_apikeys_tenantId_isActive" });
+apiKeySchema.index(
+  { expiresAt: 1 },
+  { name: "idx_apikeys_expiresAt_partial", partialFilterExpression: { expiresAt: { $exists: true } } },
+);
 
 timestampsPlugin(apiKeySchema);
 toJSONTransform(apiKeySchema);

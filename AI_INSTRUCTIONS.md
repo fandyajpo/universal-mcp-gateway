@@ -369,6 +369,92 @@ Prefer Server Components whenever possible.
 - Use Mongoose schemas for document validation at the database layer.
 - Define indexes in schema files. Do NOT create indexes manually.
 
+### 4.1.1 Index Strategy
+
+- Every index must correspond to an actual query pattern.
+- NEVER create indexes "just in case".
+- Compound indexes must follow the Equality → Sort → Range (ESR) rule whenever applicable.
+- Prefer compound indexes over multiple single-field indexes when queries use multiple predicates.
+- Avoid redundant indexes that are fully covered by another compound index.
+- Text indexes should be limited because MongoDB allows only one text index per collection.
+- Review write amplification before adding new indexes.
+- Every new index must include documented query patterns and expected selectivity.
+- Prefer covering indexes for high-frequency queries to minimize document fetches.
+- Include projected fields in compound indexes only when justified by query profiling.
+- Avoid standalone indexes on low-cardinality fields (e.g. boolean flags) unless combined with highly selective fields.
+
+### 4.1.2 Query Verification
+
+- Every performance-sensitive query must be verified using `explain("executionStats")`.
+- Prefer `IXSCAN` over `COLLSCAN`.
+- Collection scans are forbidden unless the collection is intentionally small.
+- Record `totalDocsExamined` and `totalKeysExamined` during optimization.
+- Target examined-to-returned ratio should be close to 1:1 whenever practical.
+- Do NOT force index selection using hint() unless query planner consistently chooses a suboptimal plan and the decision is documented.
+
+### 4.1.3 Index Naming
+
+- Explicitly name all indexes.
+- Index names must follow:
+
+idx*<collection>*<field>\_<field>
+
+Examples:
+
+idx_users_email
+idx_sessions_user_isValid
+idx_documents_workspace_createdAt
+
+### 4.1.4 Partial Indexes
+
+- Prefer partial indexes over full indexes when filtering active subsets.
+- Use partialFilterExpression whenever inactive documents should not be indexed.
+- Avoid indexing archived or soft-deleted records unless query frequency justifies it.
+
+### 4.1.5 TTL Indexes
+
+- TTL indexes must only exist on Date fields.
+- TTL indexes must use expireAfterSeconds: 0 unless business requirements differ.
+- Never combine TTL indexes with compound indexes.
+- Document expected deletion delay (MongoDB TTL monitor runs approximately every 60 seconds).
+
+### 4.1.6 Text Search
+
+- Only one text index is allowed per collection.
+- Combine searchable fields into a single text index.
+- Assign weights when certain fields should rank higher.
+- Prefer Atlas Search for advanced full-text search requirements.
+
+### 4.1.7 Multi-Tenant Queries
+
+- Tenant-scoped queries should lead with tenantId or workspaceId in compound indexes.
+- Cross-tenant scans are forbidden.
+- Compound indexes should prioritize tenantId before secondary predicates.
+- Tenant isolation takes precedence over global optimization.
+
+### 4.1.8 Sorting
+
+- Sorting should be covered by indexes whenever possible.
+- Avoid in-memory SORT stages.
+- Compound indexes should include sort fields after equality predicates.
+- Descending indexes should match expected query ordering.
+
+### 4.1.9 Pagination
+
+- Prefer cursor-based pagination over skip/limit for large datasets.
+- Avoid skip values greater than 1000.
+- Cursor fields should be indexed.
+- Stable ordering is required for cursor pagination.
+
+### 4.1.10 Soft Delete
+
+- Soft-deleted records should not be included in active indexes unless required.
+- Prefer partial indexes with:
+
+{ deletedAt: { $exists: false } }
+
+over indexing deleted records.
+
 ### 4.2 Validation
 
 - ALL user input must be validated with Zod schemas from `@repo/validation`.
@@ -389,6 +475,8 @@ Prefer Server Components whenever possible.
 - Include correlation IDs in every log line for request tracing.
 - Log at appropriate levels: debug (development), info (normal ops), warn (unexpected but handled), error (failure).
 - Never log secrets, tokens, or personal data.
+- Log slow database queries (>100ms) with execution time and explain plan.
+- Include index name used by performance-sensitive queries whenever available.
 
 ---
 
@@ -432,6 +520,14 @@ Prefer Server Components whenever possible.
 - Mock external services (OpenRouter, Inngest, Redis, R2) in unit tests.
 - Test error cases, edge cases, and happy paths.
 
+### 6.3 Database Performance Tests
+
+- Critical repository methods must include explain() verification.
+- Verify execution plans use IXSCAN instead of COLLSCAN whenever appropriate.
+- Verify expected indexes exist using listIndexes().
+- Benchmark high-volume queries with realistic datasets when introducing new indexes or query patterns.
+- Performance-sensitive tests should record totalDocsExamined and totalKeysExamined when optimizing queries.
+
 ---
 
 ## 7. Process
@@ -448,13 +544,17 @@ Prefer Server Components whenever possible.
 
 ### 7.2 After Writing Code
 
-1. Run `pnpm typecheck` — fix all type errors
-2. Run `pnpm lint` — fix all lint errors
-3. Run `pnpm test` — ensure tests pass
-4. Update `STATUS.md` with progress
-5. Update `NEXT_STEP.md` to point to the next step
-6. Update `CHANGELOG.md` with a summary of changes
-7. Update `ROADMAP.md` if scope changed
+1. Run pnpm typecheck — fix all type errors
+2. Run pnpm lint — fix all lint errors
+3. Run pnpm test — ensure tests pass
+4. Run explain("executionStats") for every new performance-sensitive database query
+5. Verify new and modified indexes with listIndexes()
+6. Ensure no redundant or overlapping indexes were introduced
+7. Confirm compound indexes follow the Equality → Sort → Range (ESR) rule whenever applicable
+8. Update STATUS.md with progress
+9. Update NEXT_STEP.md to point to the next step
+10. Update CHANGELOG.md with a summary of changes
+11. Update ROADMAP.md if scope changed
 
 ### 7.3 Scope Management
 

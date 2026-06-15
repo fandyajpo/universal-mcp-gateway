@@ -463,6 +463,9 @@ importers:
       '@repo/types':
         specifier: workspace:*
         version: link:../types
+      '@repo/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@repo/validation':
         specifier: workspace:*
         version: link:../validation

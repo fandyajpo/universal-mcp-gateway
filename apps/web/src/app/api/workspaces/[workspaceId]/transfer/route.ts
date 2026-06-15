@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createGetUserRole } from "../../../../../lib/middleware/get-user-role";
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string }> },
@@ -31,13 +33,7 @@ export async function POST(
 
     const userRepo = new UserRepository();
     const workspaceRepo = new WorkspaceRepository(userId);
-    const getUserRole = async (uid: string, wid: string): Promise<"owner" | "admin" | "member" | "viewer" | null> => {
-      const ws = await workspaceRepo.findById(wid);
-      if (!ws) return null;
-      if (ws.ownerId === uid) return "owner" as const;
-      const member = ws.members?.find((m) => m.userId === uid && !m.deletedAt);
-      return member?.role ?? null;
-    };
+    const getUserRole = createGetUserRole(workspaceRepo);
     const rbac = createRBACService(getUserRole);
     const service = createWorkspaceService(workspaceRepo, userRepo, rbac);
 

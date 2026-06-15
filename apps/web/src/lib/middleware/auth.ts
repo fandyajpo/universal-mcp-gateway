@@ -21,11 +21,36 @@ interface CachedSession {
 let redisClient: Redis | null = null;
 
 function getRedis(): Redis {
-  redisClient ??= new Redis({
-    url: process.env.REDIS_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? "",
-    token: process.env.REDIS_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
-  });
+  const { restUrl, token } = resolveRedisConfig();
+  redisClient ??= new Redis({ url: restUrl, token });
   return redisClient;
+}
+
+function resolveRedisConfig(): { restUrl: string; token: string } {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL ?? "";
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
+  if (upstashUrl && upstashToken) {
+    return { restUrl: upstashUrl, token: upstashToken };
+  }
+
+  const redisUrl = (process.env.REDIS_URL ?? "").trim();
+  if (redisUrl.startsWith("redis://") || redisUrl.startsWith("rediss://")) {
+    try {
+      const parsed = new URL(redisUrl);
+      return {
+        restUrl: `https://${parsed.hostname}`,
+        token: parsed.password ?? "",
+      };
+    } catch {
+      return { restUrl: "", token: "" };
+    }
+  }
+
+  if (redisUrl.startsWith("https://")) {
+    return { restUrl: redisUrl, token: process.env.REDIS_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "" };
+  }
+
+  return { restUrl: "", token: "" };
 }
 
 export interface SessionValidationResult {

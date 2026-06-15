@@ -13,13 +13,23 @@ export interface HealthCheckResult {
 export interface ConnectionConfig {
   minPoolSize?: number;
   maxPoolSize?: number;
+  socketTimeoutMS?: number;
   serverSelectionTimeoutMS?: number;
+  heartbeatFrequencyMS?: number;
+  retryWrites?: boolean;
+  w?: string;
+  readConcern?: string;
 }
 
-const DEFAULT_CONFIG: ConnectionConfig = {
+const DEFAULT_CONFIG: Required<ConnectionConfig> = {
   minPoolSize: 5,
-  maxPoolSize: 20,
-  serverSelectionTimeoutMS: 10000,
+  maxPoolSize: 50,
+  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 5000,
+  heartbeatFrequencyMS: 10000,
+  retryWrites: true,
+  w: "majority",
+  readConcern: "majority",
 };
 
 let connectionPromise: Promise<void> | null = null;
@@ -60,16 +70,32 @@ export async function connect(url?: string, config?: ConnectionConfig): Promise<
 
   const opts: ConnectionConfig = { ...DEFAULT_CONFIG, ...config };
 
+  // Load env-based pool overrides when no explicit config provided
+  const configPoolMin = config?.minPoolSize;
+  const configPoolMax = config?.maxPoolSize;
+  if (configPoolMin === undefined || configPoolMax === undefined) {
+    try {
+      const { getConfig } = await import("@repo/config");
+      const cfg = getConfig();
+      if (configPoolMin === undefined) opts.minPoolSize = cfg.database.poolMin;
+      if (configPoolMax === undefined) opts.maxPoolSize = cfg.database.poolMax;
+    } catch {
+      // Fall through to defaults if config not loaded
+    }
+  }
+
   attachEventListeners();
 
-  connectionPromise = mongoose.connect(DATABASE_URL, {
-    minPoolSize: opts.minPoolSize,
-    maxPoolSize: opts.maxPoolSize,
-    serverSelectionTimeoutMS: opts.serverSelectionTimeoutMS,
-    socketTimeoutMS: 45000,
-    heartbeatFrequencyMS: 10000,
-  }).then(() => {
-    logger.info("MongoDB connection established");
+  connectionPromise = mongoose.connect(DATABASE_URL, opts as mongoose.ConnectOptions).then(() => {
+    logger.info(
+      {
+        minPoolSize: opts.minPoolSize,
+        maxPoolSize: opts.maxPoolSize,
+        serverSelectionTimeoutMS: opts.serverSelectionTimeoutMS,
+        socketTimeoutMS: opts.socketTimeoutMS,
+      },
+      "MongoDB connection established",
+    );
   }).catch((err: unknown) => {
     logger.error({ err }, "MongoDB connection failed");
     connectionPromise = null;
@@ -97,6 +123,40 @@ export function getConnection(): mongoose.Connection {
     throw new Error("Database not connected. Call connect() first.");
   }
   return mongoose.connection;
+}
+
+export function getPoolStats(): {
+  active: number | undefined;
+  idle: number | undefined;
+  available: number | undefined;
+} {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) {
+      return { active: undefined, idle: undefined, available: undefined };
+    }
+    const pool = extractPool();
+    return pool;
+  } catch {
+    return { active: undefined, idle: undefined, available: undefined };
+  }
+}
+
+function extractPool(): {
+  active: number | undefined;
+  idle: number | undefined;
+  available: number | undefined;
+} {
+  const client = mongoose.connection.getClient();
+  const topology = (client as unknown as { topology?: { s?: { pool?: { active: number; available: number } } } }).topology;
+  if (!topology?.s?.pool) {
+    return { active: undefined, idle: undefined, available: undefined };
+  }
+  return {
+    active: topology.s.pool.active,
+    idle: topology.s.pool.available - topology.s.pool.active,
+    available: topology.s.pool.available,
+  };
 }
 
 export function isConnected(): boolean {

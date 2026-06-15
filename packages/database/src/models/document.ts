@@ -42,13 +42,14 @@ const documentSchema = new Schema<IDocument>({
   deletedAt: { type: Date, default: null },
 });
 
-documentSchema.index({ tenantId: 1, status: 1 });
-documentSchema.index({ tenantId: 1, contentType: 1 });
-documentSchema.index({ tenantId: 1, createdAt: -1 });
+documentSchema.index({ tenantId: 1, status: 1 }, { name: "idx_documents_tenantId_status" });
+documentSchema.index({ tenantId: 1, contentType: 1 }, { name: "idx_documents_tenantId_contentType" });
+documentSchema.index({ tenantId: 1, createdAt: -1 }, { name: "idx_documents_tenantId_createdAt" });
 documentSchema.index(
   { title: "text", description: "text", tags: "text" },
-  { weights: { title: 10, description: 5, tags: 3 } },
+  { name: "idx_documents_title_text_description_text_tags_text", weights: { title: 10, description: 5, tags: 3 } },
 );
+documentSchema.index({ tenantId: 1, updatedAt: 1 }, { name: "idx_documents_tenantId_updatedAt" });
 
 timestampsPlugin(documentSchema);
 toJSONTransform(documentSchema);

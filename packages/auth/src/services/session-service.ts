@@ -125,8 +125,6 @@ export function createSessionService(auth: AuthServer): SessionServiceMethods {
           createdAt: session.createdAt.getTime(),
           isValid: true,
         },
-        undefined,
-        session.workspaceId,
       );
 
       return { valid: true, session, needsRefresh };
@@ -163,8 +161,6 @@ export function createSessionService(auth: AuthServer): SessionServiceMethods {
           createdAt: info.createdAt.getTime(),
           isValid: true,
         },
-        undefined,
-        info.workspaceId,
       );
 
       logger.info({ userId: info.userId }, "session refreshed");

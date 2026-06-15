@@ -49,14 +49,18 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     };
 
     const result = await WorkspaceModel.updateOne(
-      { _id: workspaceId, tenantId: this.tenantId },
+      { _id: workspaceId, tenantId: this.tenantId, "members.userId": { $ne: userId } },
       {
         $push: { members: entry },
         $inc: { memberCount: 1 },
       },
     );
 
-    if (result.matchedCount === 0) throw new Error("Workspace not found");
+    if (result.matchedCount === 0) {
+      const exists = await WorkspaceModel.exists({ _id: workspaceId, tenantId: this.tenantId });
+      if (!exists) throw new Error("Workspace not found");
+      throw new Error("User is already a member");
+    }
 
     return entry;
   }
@@ -92,10 +96,10 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     ] as PipelineStage[];
 
     if (filters?.role) {
-      pipeline.push({ $match: { "members.role": filters.role } } as PipelineStage);
+      pipeline.push({ $match: { "members.role": filters.role } });
     }
 
-    const countPipeline = [...pipeline, { $count: "total" } as PipelineStage];
+    const countPipeline = [...pipeline, { $count: "total" }];
     const countResult = await WorkspaceModel.aggregate<{ total: number }>(countPipeline);
     const total = countResult.length > 0 ? (countResult[0]?.total ?? 0) : 0;
 
@@ -109,9 +113,9 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
         foreignField: "_id",
         as: "user",
       },
-    } as PipelineStage);
+    });
 
-    pipeline.push({ $unwind: { path: "$user", preserveNullAndEmptyArrays: true } } as PipelineStage);
+    pipeline.push({ $unwind: { path: "$user", preserveNullAndEmptyArrays: true } });
 
     pipeline.push({
       $project: {
@@ -127,7 +131,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
           avatarUrl: "$user.avatarUrl",
         },
       },
-    } as PipelineStage);
+      });
 
     const members = await WorkspaceModel.aggregate<MemberWithUser>(pipeline);
     return { members, total };

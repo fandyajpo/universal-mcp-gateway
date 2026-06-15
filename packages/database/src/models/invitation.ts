@@ -48,8 +48,9 @@ const invitationSchema = new Schema<IInvitation>({
   deletedAt: { type: Date, default: null },
 });
 
-invitationSchema.index({ workspaceId: 1, status: 1 });
-invitationSchema.index({ inviteeEmail: 1, workspaceId: 1 });
+invitationSchema.index({ workspaceId: 1, status: 1, createdAt: -1 }, { name: "idx_invitations_workspaceId_status_createdAt" });
+invitationSchema.index({ inviteeEmail: 1, workspaceId: 1, status: 1 }, { name: "idx_invitations_inviteeEmail_workspaceId_status" });
+invitationSchema.index({ workspaceId: 1, createdAt: 1 }, { name: "idx_invitations_workspaceId_createdAt" });
 
 timestampsPlugin(invitationSchema);
 toJSONTransform(invitationSchema);

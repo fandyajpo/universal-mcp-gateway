@@ -26,7 +26,14 @@
     "verify": "pnpm --filter @repo/verify test",
     "verify:ci": "pnpm --filter @repo/verify test:ci",
     "prepare": "husky",
-    "ci": "pnpm lint && pnpm typecheck && pnpm test"
+    "ci": "pnpm lint && pnpm typecheck && pnpm test",
+    "migrate:up": "node scripts/migrate.mjs up",
+    "migrate:down": "node scripts/migrate.mjs down",
+    "migrate:create": "node scripts/migrate.mjs create",
+    "migrate:status": "node scripts/migrate.mjs status",
+    "seed": "node scripts/seed.mjs",
+    "seed:reset": "node scripts/seed.mjs reset",
+    "seed:minimal": "node scripts/seed.mjs minimal"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

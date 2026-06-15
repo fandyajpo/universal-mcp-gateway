@@ -31,21 +31,6 @@ export function createWorkspaceService(
   userRepo: UserRepository,
   rbacService: RBACService,
 ): WorkspaceServiceMethods {
-  async function generateUniqueSlug(base: string): Promise<string> {
-    const slug = slugify(base).substring(0, 63);
-    const existing = await workspaceRepo.findBySlug(slug);
-    if (!existing) return slug;
-
-    for (let i = 1; i < 100; i++) {
-      const candidate = `${slug}-${i}`.substring(0, 63);
-      const existing = await workspaceRepo.findBySlug(candidate);
-      if (!existing) return candidate;
-    }
-
-    const fallback = `${slug}-${Date.now()}`.substring(0, 63);
-    return fallback;
-  }
-
   async function create(
     data: { name: string; slug?: string; description?: string },
     userId: string,
@@ -55,28 +40,37 @@ export function createWorkspaceService(
         return { success: false, error: "Name must be between 2 and 100 characters", code: "VALIDATION_ERROR" };
       }
 
-      const slug = data.slug ?? (await generateUniqueSlug(data.name));
+      const baseSlug = data.slug ? slugify(data.slug) : slugify(data.name);
+      let slug = baseSlug.substring(0, 63);
+      let attempt = 0;
 
-      const slugExists = await workspaceRepo.findBySlug(slug);
-      if (slugExists) {
-        return { success: false, error: "A workspace with this slug already exists", code: "CONFLICT" };
+      while (attempt < 10) {
+        try {
+          const workspace = await workspaceRepo.create({
+            name: data.name.trim(),
+            slug,
+            description: data.description?.trim(),
+            ownerId: userId,
+            isActive: true,
+            plan: "free",
+          });
+
+          const workspaceId = (workspace as unknown as { _id: string })._id;
+
+          await workspaceRepo.addMember(workspaceId, userId, WorkspaceRole.Owner);
+
+          logger.info({ workspaceId: workspaceId, userId, slug }, "workspace created");
+          return { success: true, data: workspace };
+        } catch (createError) {
+          const isDuplicate = createError instanceof Error &&
+            (createError.message.includes("duplicate key") || createError.message.includes("E11000"));
+          if (!isDuplicate || attempt >= 9) throw createError;
+          slug = `${baseSlug.substring(0, 55)}-${Date.now() % 100000}`.substring(0, 63);
+          attempt++;
+        }
       }
 
-      const workspace = await workspaceRepo.create({
-        name: data.name.trim(),
-        slug,
-        description: data.description?.trim(),
-        ownerId: userId,
-        isActive: true,
-        plan: "free",
-      });
-
-      const workspaceId = (workspace as unknown as { _id: string })._id;
-
-      await workspaceRepo.addMember(workspaceId, userId, WorkspaceRole.Owner);
-
-      logger.info({ workspaceId: workspaceId, userId, slug }, "workspace created");
-      return { success: true, data: workspace };
+      return { success: false, error: "Failed to create workspace due to slug conflict", code: "CONFLICT" };
     } catch (error) {
       logger.error({ error, userId }, "workspace creation failed");
       return { success: false, error: "Failed to create workspace", code: "INTERNAL_ERROR" };
@@ -240,18 +234,6 @@ export function createWorkspaceService(
 
       const targetUserId = (user as unknown as { _id: string })._id;
 
-      const workspace = await workspaceRepo.findById(workspaceId);
-      if (!workspace) {
-        return { success: false, error: "Workspace not found", code: "NOT_FOUND" };
-      }
-
-      const existingMember = workspace.members?.some(
-        (m) => m.userId === targetUserId && !m.deletedAt,
-      );
-      if (existingMember) {
-        return { success: false, error: "User is already a member of this workspace", code: "CONFLICT" };
-      }
-
       await workspaceRepo.addMember(
         workspaceId,
         targetUserId,
@@ -302,6 +284,8 @@ export function createWorkspaceService(
         return { success: false, error: "User is not a member of this workspace", code: "NOT_FOUND" };
       }
 
+      await rbacService.invalidateCache(targetUserId, workspaceId);
+
       logger.info({ workspaceId, targetUserId, removedBy: requesterId }, "member removed from workspace");
       return { success: true };
     } catch (error) {
@@ -340,6 +324,9 @@ export function createWorkspaceService(
 
       await workspaceRepo.updateMemberRole(workspaceId, currentOwnerId, WorkspaceRole.Admin);
       await workspaceRepo.updateMemberRole(workspaceId, newOwnerId, WorkspaceRole.Owner);
+
+      await rbacService.invalidateCache(currentOwnerId, workspaceId);
+      await rbacService.invalidateCache(newOwnerId, workspaceId);
 
       logger.info({ workspaceId, fromUserId: currentOwnerId, toUserId: newOwnerId }, "ownership transferred");
       return { success: true };

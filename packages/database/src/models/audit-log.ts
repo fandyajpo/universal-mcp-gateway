@@ -32,9 +32,10 @@ const auditLogSchema = new Schema<IAuditLog>({
   deletedAt: { type: Date, default: null },
 });
 
-auditLogSchema.index({ tenantId: 1, createdAt: -1 });
-auditLogSchema.index({ userId: 1, createdAt: -1 });
-auditLogSchema.index({ action: 1, createdAt: -1 });
+auditLogSchema.index({ tenantId: 1, createdAt: -1 }, { name: "idx_auditlogs_tenantId_createdAt" });
+auditLogSchema.index({ userId: 1, createdAt: -1 }, { name: "idx_auditlogs_userId_createdAt" });
+auditLogSchema.index({ action: 1, createdAt: -1 }, { name: "idx_auditlogs_action_createdAt" });
+auditLogSchema.index({ entityType: 1, entityId: 1, createdAt: -1 }, { name: "idx_auditlogs_entityType_entityId_createdAt" });
 
 timestampsPlugin(auditLogSchema);
 toJSONTransform(auditLogSchema);

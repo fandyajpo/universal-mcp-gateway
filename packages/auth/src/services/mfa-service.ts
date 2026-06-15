@@ -1,7 +1,7 @@
 import { generateRecoveryCodes, hashRecoveryCodes, verifyRecoveryCode } from "./recovery-codes";
 import { generateTOTPSecret, generateTOTPUri, generateQRCodeDataUrl, verifyTOTPCode } from "./totp";
 import { createCacheClient } from "@repo/cache";
-import { hashString, hmac } from "@repo/crypto";
+import { encrypt, decrypt, hashString, hmac } from "@repo/crypto";
 import { UserModel } from "@repo/database";
 import { createLogger } from "@repo/logger";
 
@@ -38,7 +38,6 @@ export function createMFAService(): MFAService {
     const qrCodeDataUrl = await generateQRCodeDataUrl(uri);
 
     const encryptionKey = deriveEncryptionKey();
-    const { encrypt } = await import("@repo/crypto");
     const encryptedSecret = encrypt(secret, encryptionKey);
 
     await UserModel.findByIdAndUpdate(userId, { mfaSecret: encryptedSecret });
@@ -55,7 +54,6 @@ export function createMFAService(): MFAService {
     }
 
     const encryptionKey = deriveEncryptionKey();
-    const { decrypt } = await import("@repo/crypto");
     const decryptedSecret = decrypt(user.mfaSecret, encryptionKey);
 
     const valid = verifyTOTPCode(decryptedSecret, code);
@@ -76,7 +74,6 @@ export function createMFAService(): MFAService {
     }
 
     const encryptionKey = deriveEncryptionKey();
-    const { decrypt } = await import("@repo/crypto");
     const decryptedSecret = decrypt(user.mfaSecret, encryptionKey);
 
     return verifyTOTPCode(decryptedSecret, code);
@@ -88,7 +85,7 @@ export function createMFAService(): MFAService {
       return false;
     }
 
-    const result = await verifyRecoveryCode(code, user.recoveryCodes);
+    const result = verifyRecoveryCode(code, user.recoveryCodes);
     if (!result.valid) {
       return false;
     }
@@ -117,7 +114,7 @@ export function createMFAService(): MFAService {
 
   async function generateNewRecoveryCodes(userId: string): Promise<string[]> {
     const codes = generateRecoveryCodes();
-    const hashed = await hashRecoveryCodes(codes);
+    const hashed = hashRecoveryCodes(codes);
 
     await UserModel.findByIdAndUpdate(userId, { recoveryCodes: hashed });
     logger.info({ userId }, "new recovery codes generated");

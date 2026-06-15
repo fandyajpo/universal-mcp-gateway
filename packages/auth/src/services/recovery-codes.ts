@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 
 import { createLogger } from "@repo/logger";
 
@@ -20,21 +20,30 @@ export function generateRecoveryCodes(count: number = CODE_COUNT): string[] {
   return codes;
 }
 
-export async function hashRecoveryCode(code: string): Promise<string> {
-  const { hashPassword } = await import("@repo/crypto");
-  return hashPassword(code);
+function hashWithSHA256(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
 }
 
-export async function verifyRecoveryCode(
+function constantTimeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) return false;
+  return timingSafeEqual(aBuf, bBuf);
+}
+
+export function hashRecoveryCode(code: string): string {
+  return hashWithSHA256(code);
+}
+
+export function verifyRecoveryCode(
   code: string,
   hashedCodes: string[],
-): Promise<{ valid: boolean; index: number }> {
+): { valid: boolean; index: number } {
+  const hashed = hashWithSHA256(code);
   for (let i = 0; i < hashedCodes.length; i++) {
-    const { verifyPassword } = await import("@repo/crypto");
     const hashedCode = hashedCodes[i];
     if (!hashedCode) continue;
-    const valid = await verifyPassword(code, hashedCode);
-    if (valid) {
+    if (constantTimeEqual(hashed, hashedCode)) {
       logger.info("recovery code verified");
       return { valid: true, index: i };
     }
@@ -42,6 +51,6 @@ export async function verifyRecoveryCode(
   return { valid: false, index: -1 };
 }
 
-export async function hashRecoveryCodes(codes: string[]): Promise<string[]> {
-  return Promise.all(codes.map(hashRecoveryCode));
+export function hashRecoveryCodes(codes: string[]): string[] {
+  return codes.map(hashRecoveryCode);
 }

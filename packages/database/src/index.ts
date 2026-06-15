@@ -1,9 +1,10 @@
-export { connect, disconnect, getConnection, isConnected, healthCheck } from "./connection";
+export { connect, disconnect, getConnection, getPoolStats, isConnected, healthCheck } from "./connection";
 export type { HealthCheckResult, ConnectionConfig } from "./connection";
 export { BaseRepository } from "./repositories/base";
 export type { PaginationOptions } from "./repositories/base";
 export { TenantAwareRepository } from "./repositories/tenant-aware";
 export { baseSchemaFields, timestampsPlugin, softDeletePlugin, toJSONTransform } from "./schema";
+export { withQueryTiming } from "./middleware/query-timing";
 
 export type { IUser } from "./models/user";
 export type { IWorkspace, IWorkspaceMemberEntry } from "./models/workspace";

@@ -14,6 +14,8 @@ const envVarsSchema = z.object({
   APP_NAME: z.string().min(1).default("Universal MCP Gateway"),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DATABASE_POOL_MIN: z.coerce.number().int().min(1).default(5),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).default(50),
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
 
   R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID is required"),
@@ -50,6 +52,8 @@ export const configSchema = envVarsSchema.transform((raw) => ({
   },
   database: {
     url: raw.DATABASE_URL,
+    poolMin: raw.DATABASE_POOL_MIN,
+    poolMax: raw.DATABASE_POOL_MAX,
   },
   redis: {
     url: raw.REDIS_URL,

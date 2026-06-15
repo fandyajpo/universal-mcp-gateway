@@ -36,8 +36,9 @@ const userSchema = new Schema<IUser>({
   deletedAt: { type: Date, default: null },
 });
 
-userSchema.index({ name: "text" });
-userSchema.index({ isActive: 1, lastLoginAt: 1 });
+userSchema.index({ name: "text" }, { name: "idx_users_name_text" });
+userSchema.index({ isActive: 1, lastLoginAt: 1 }, { name: "idx_users_isActive_lastLoginAt" });
+userSchema.index({ emailVerified: 1, isActive: 1 }, { name: "idx_users_emailVerified_isActive" });
 
 timestampsPlugin(userSchema);
 toJSONTransform(userSchema);
