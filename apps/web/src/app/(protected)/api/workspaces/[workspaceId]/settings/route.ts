@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createGetUserRole } from "../../../../../lib/middleware/get-user-role";
+import { createGetUserRole } from "@/lib/middleware/get-user-role";
 
 export async function PATCH(
   request: NextRequest,

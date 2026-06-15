@@ -39,7 +39,7 @@ function resolveRedisConfig(): { restUrl: string; token: string } {
       const parsed = new URL(redisUrl);
       return {
         restUrl: `https://${parsed.hostname}`,
-        token: parsed.password ?? "",
+        token: parsed.password || "",
       };
     } catch {
       return { restUrl: "", token: "" };

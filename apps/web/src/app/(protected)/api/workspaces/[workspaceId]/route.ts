@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createGetUserRole } from "../../../../lib/middleware/get-user-role";
+import { createGetUserRole } from "@/lib/middleware/get-user-role";
+
 import { updateWorkspaceSchema } from "@repo/validation";
 
 export async function GET(
