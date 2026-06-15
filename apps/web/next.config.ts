@@ -2,23 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: [
-    "@repo/ai",
-    "@repo/auth",
-    "@repo/cache",
-    "@repo/config",
-    "@repo/connector-sdk",
-    "@repo/connectors",
-    "@repo/crypto",
-    "@repo/database",
-    "@repo/logger",
-    "@repo/mcp",
-    "@repo/rag",
     "@repo/types",
     "@repo/ui",
     "@repo/utils",
     "@repo/validation",
   ],
-  experimental: {},
+  serverExternalPackages: [
+    "bcrypt",
+    "better-auth",
+    "mongoose",
+    "mongodb",
+    "pino",
+    "pino-pretty",
+    "@sentry/node",
+    "@sentry/core",
+    "@mapbox/node-pre-gyp",
+  ],
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [
@@ -27,6 +26,19 @@ const nextConfig: NextConfig = {
         "@mapbox/node-pre-gyp",
       ];
     }
+    config.resolve = {
+      ...config.resolve,
+      fallback: {
+        ...(typeof config.resolve?.fallback === "object" && !Array.isArray(config.resolve.fallback) ? config.resolve.fallback : {}),
+        aws4: false,
+        "mongodb-client-encryption": false,
+        "snappy": false,
+        "socks": false,
+        "kerberos": false,
+        "@mongodb-js/zstd": false,
+        "gcp-metadata": false,
+      },
+    };
     return config;
   },
   logging: {

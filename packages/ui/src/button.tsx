@@ -61,10 +61,16 @@ const Spinner = (): React.ReactElement => (
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
+    if (asChild) {
+      return (
+        <Slot className={cn(buttonVariants({ variant, size, className }))} {...props}>
+          {children}
+        </Slot>
+      );
+    }
 
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={disabled || loading} // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
@@ -73,7 +79,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading && <Spinner />}
         {children}
-      </Comp>
+      </button>
     );
   },
 );
