@@ -3,6 +3,7 @@ import { createCacheClient, RateLimiter } from "@repo/cache";
 import { createLogger } from "@repo/logger";
 import type { LoginInput, RegisterInput, ResetPasswordInput, VerifyEmailInput } from "@repo/validation";
 import { loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from "@repo/validation";
+import { createSessionCache } from "./session-cache";
 
 const logger = createLogger("@repo/auth:service");
 
@@ -59,6 +60,7 @@ export interface AuthServiceMethods {
 export function createAuthService(auth: AuthServer): AuthServiceMethods {
   const cache = createCacheClient();
   const rateLimiter = new RateLimiter(cache);
+  const sessionCache = createSessionCache();
 
   function loginAttemptsKey(email: string): string {
     return `lockout:attempts:${email.toLowerCase()}`;
@@ -225,6 +227,7 @@ export function createAuthService(auth: AuthServer): AuthServiceMethods {
       const headers = new Headers();
       headers.set("Authorization", `Bearer ${sessionToken}`);
       await auth.api.signOut({ headers });
+      await sessionCache.del(sessionToken);
       logger.info("user logged out");
       return { success: true };
     } catch (error) {

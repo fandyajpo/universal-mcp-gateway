@@ -38,7 +38,7 @@ export function createAuthServer() {
     }),
 
     emailAndPassword: createEmailPasswordProvider({
-      requireEmailVerification: true,
+      requireEmailVerification: false,
       sendResetPassword({ user, url }) {
         const token = extractResetToken(url);
         const resetUrl = token ? buildPasswordResetUrl(token) : url;

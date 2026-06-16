@@ -2,6 +2,9 @@
 
 import { cookies } from "next/headers";
 
+import { createAuthServer, createMFAService } from "@repo/auth";
+import { connect } from "@repo/database";
+
 export interface SetupMFAResult {
   success: boolean;
   secret?: string;
@@ -42,11 +45,6 @@ export async function setupMFAAction(): Promise<SetupMFAResult> {
       return { success: false, error: "Not authenticated" };
     }
 
-    const [{ connect }, { createAuthServer, createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const server = createAuthServer();
     const session = await server.api.getSession({ headers: { Authorization: `Bearer ${sessionToken}` } });
@@ -83,11 +81,6 @@ export async function verifyAndEnableMFAAction(
     if (!sessionToken) {
       return { success: false, error: "Not authenticated", code: "not_authenticated" };
     }
-
-    const [{ connect }, { createAuthServer, createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
 
     await connect();
     const server = createAuthServer();
@@ -130,11 +123,6 @@ export async function verifyMFAAction(
   }
 
   try {
-    const [{ connect }, { createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const mfa = createMFAService();
 
@@ -192,11 +180,6 @@ export async function skipMFAWithRecoveryAction(
   }
 
   try {
-    const [{ connect }, { createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const mfa = createMFAService();
 
@@ -244,11 +227,6 @@ export async function disableMFAAction(
       return { success: false, error: "Not authenticated", code: "not_authenticated" };
     }
 
-    const [{ connect }, { createAuthServer, createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const server = createAuthServer();
     const session = await server.api.getSession({ headers: { Authorization: `Bearer ${sessionToken}` } });
@@ -278,11 +256,6 @@ export async function regenerateRecoveryCodesAction(): Promise<RegenerateRecover
     if (!sessionToken) {
       return { success: false, error: "Not authenticated" };
     }
-
-    const [{ connect }, { createAuthServer, createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
 
     await connect();
     const server = createAuthServer();

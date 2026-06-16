@@ -12,7 +12,7 @@ export type { MemberWithUser } from "./repositories/workspace";
 export type { ISession } from "./models/session";
 export type { IApiKey } from "./models/api-key";
 export type { IAuditLog } from "./models/audit-log";
-export type { IDocument } from "./models/document";
+export type { IDocument, IProcessedContent, IProcessedContentPage, IExtractionMetadata, IPdfMetadata, IPdfInfoMetadata, IPdfPageDimension, IPdfTocEntry, ITable, ITableRow, ITableCell, ITableFormats, IStepMetric } from "./models/document";
 export type { IInvitation, InvitationStatus } from "./models/invitation";
 
 export { UserModel } from "./models/user";

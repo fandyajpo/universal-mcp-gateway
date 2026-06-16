@@ -7,6 +7,15 @@ export type { Agent, AgentConfig, AgentTool } from "./models/agent";
 export type { ChatMessage, ChatThread, ChatConfig } from "./models/chat";
 export type { Embedding, EmbeddingConfig, EmbeddingModel } from "./models/embedding";
 export type { RAGResult, RAGConfig } from "./models/rag";
+export type {
+  PdfDocument,
+  PdfDocumentStatus,
+  PdfStepMetric,
+  PdfDocumentMetadata,
+  PdfDocumentInfo,
+  PdfExtractionMetadata,
+  PdfTableSummary,
+} from "./models/pdf-document";
 export type { MCPTool, MCPRequest, MCPResponse, MCPError, MCPCapability } from "./models/mcp";
 export type {
   ApiKey,

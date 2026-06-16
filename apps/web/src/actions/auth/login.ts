@@ -1,7 +1,10 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
+import { createAuthServer, createMFAService, createSessionCache } from "@repo/auth";
+import { connect, UserModel } from "@repo/database";
 import { loginSchema } from "@repo/validation";
 
 export interface LoginActionResult {
@@ -33,11 +36,6 @@ export async function loginAction(
   }
 
   try {
-    const [{ connect, UserModel }, { createAuthServer, createMFAService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const server = createAuthServer();
 
@@ -52,12 +50,14 @@ export async function loginAction(
       },
     });
 
-    if (!response.token) {
+    const token = typeof response === "object" && "token" in response ? (response as { token: string }).token : undefined;
+
+    if (!token) {
       return { success: false, error: "Authentication failed", code: "unknown" };
     }
 
     const session = await server.api.getSession({
-      headers: { Authorization: `Bearer ${response.token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     if (!session) {
@@ -66,6 +66,8 @@ export async function loginAction(
 
     const user = await UserModel.findById(session.user.id).select("mfaEnabled").lean();
     const mfaEnabled = user?.mfaEnabled === true;
+    const sessionCache = createSessionCache();
+    const maxAge = parsed.data.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7;
 
     if (mfaEnabled) {
       const cookieStore = await cookies();
@@ -76,18 +78,31 @@ export async function loginAction(
       if (trustCookie) {
         const isTrusted = mfa.verifyTrustToken(trustCookie, session.user.id);
         if (isTrusted) {
-          cookieStore.set("umgw_session", response.token, {
+          cookieStore.set("umgw_session", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
             path: "/",
-            maxAge: parsed.data.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
+            maxAge,
           });
-          return { success: true };
+          await sessionCache.set({
+            token,
+            userId: session.user.id,
+            email: session.user.email,
+            name: session.user.name,
+            image: session.user.image,
+            workspaceId: undefined,
+            ipAddress: undefined,
+            userAgent: undefined,
+            expiresAt: Date.now() + maxAge * 1000,
+            createdAt: Date.now(),
+            isValid: true,
+          }, maxAge);
+          redirect("/chat");
         }
       }
 
-      const challengeId = await mfa.createChallenge(response.token, session.user.id, session.user.email);
+      const challengeId = await mfa.createChallenge(token, session.user.id, session.user.email);
 
       return {
         success: true,
@@ -97,16 +112,34 @@ export async function loginAction(
     }
 
     const cookieStore = await cookies();
-    cookieStore.set("umgw_session", response.token, {
+    cookieStore.set("umgw_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: parsed.data.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
+      maxAge,
     });
 
-    return { success: true };
+    await sessionCache.set({
+      token,
+      userId: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      image: session.user.image,
+      workspaceId: undefined,
+      ipAddress: undefined,
+      userAgent: undefined,
+      expiresAt: Date.now() + maxAge * 1000,
+      createdAt: Date.now(),
+      isValid: true,
+    }, maxAge);
+
+    redirect("/chat");
   } catch (error) {
+    if (error && typeof error === "object" && "digest" in error && (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+
     const message = error instanceof Error ? error.message : String(error);
 
     if (message.toLowerCase().includes("email not verified")) {

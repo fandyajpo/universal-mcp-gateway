@@ -63,9 +63,19 @@ export function createPermissionCache(): PermissionCacheMethods {
   async function invalidateAll(userId: string, workspaceId: string): Promise<void> {
     try {
       const roleKey = roleCacheKey(userId, workspaceId);
+      const permPattern = permissionInvalidationPattern(workspaceId, userId);
       await cache.del(roleKey);
+      let cursor = "0";
+      do {
+        const result = await cache.scan(cursor, { match: permPattern, count: 100 });
+        cursor = result[0];
+        const keys = result[1];
+        if (keys.length > 0) {
+          await cache.del(...keys);
+        }
+      } while (cursor !== "0");
     } catch (error) {
-      logger.error({ error, userId, workspaceId }, "failed to invalidate role cache");
+      logger.error({ error, userId, workspaceId }, "failed to invalidate permission cache");
     }
   }
 

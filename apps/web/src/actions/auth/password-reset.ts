@@ -1,5 +1,7 @@
 "use server";
 
+import { createPasswordResetService } from "@repo/auth";
+import { connect } from "@repo/database";
 import { emailSchema, resetPasswordSchema } from "@repo/validation";
 
 export interface RequestResetResult {
@@ -28,11 +30,6 @@ export async function requestResetAction(
   }
 
   try {
-    const [{ connect }, { createPasswordResetService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const service = createPasswordResetService();
     await service.requestReset(parsed.data);
@@ -67,11 +64,6 @@ export async function resetPasswordAction(
   }
 
   try {
-    const [{ connect }, { createPasswordResetService }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const service = createPasswordResetService();
     const result = await service.resetPassword(parsed.data.token, parsed.data.password);

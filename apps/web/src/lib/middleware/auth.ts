@@ -2,7 +2,10 @@ import { Redis } from "@upstash/redis";
 
 const SESSION_COOKIE = "umgw_session";
 
-const SESSION_CACHE_PREFIX = "tenant:default:session:";
+// Must match sessionCacheKey() in @repo/auth/src/services/session-cache.ts
+function sessionCacheKey(token: string): string {
+  return `tenant:default:session:${token}`;
+}
 
 interface CachedSession {
   token: string;
@@ -69,7 +72,7 @@ export async function validateSession(request: Request): Promise<SessionValidati
 
   try {
     const redis = getRedis();
-    const key = `${SESSION_CACHE_PREFIX}${token}`;
+    const key = sessionCacheKey(token);
     const session = await redis.get<CachedSession>(key);
 
     if (!session) {

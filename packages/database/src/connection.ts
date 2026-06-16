@@ -18,18 +18,18 @@ export interface ConnectionConfig {
   heartbeatFrequencyMS?: number;
   retryWrites?: boolean;
   w?: string;
-  readConcern?: string;
+  readConcern?: { level: string };
 }
 
 const DEFAULT_CONFIG: Required<ConnectionConfig> = {
   minPoolSize: 5,
   maxPoolSize: 50,
   socketTimeoutMS: 45000,
-  serverSelectionTimeoutMS: 5000,
+  serverSelectionTimeoutMS: 30000,
   heartbeatFrequencyMS: 10000,
   retryWrites: true,
   w: "majority",
-  readConcern: "majority",
+  readConcern: { level: "majority" },
 };
 
 let connectionPromise: Promise<void> | null = null;

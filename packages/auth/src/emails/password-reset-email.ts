@@ -1,5 +1,7 @@
 import { createLogger } from "@repo/logger";
 
+import { sendEmail } from "./resend";
+
 const logger = createLogger("@repo/auth:emails");
 
 export interface PasswordResetEmailParams {
@@ -15,9 +17,9 @@ export function sendPasswordResetEmail(params: PasswordResetEmailParams): void {
   <meta charset="utf-8" />
 </head>
 <body style="font-family: sans-serif; padding: 24px;">
-  <h1>Reset Your Password</h1>
+  <h1>Reset your password</h1>
   <p>Hi ${params.name},</p>
-  <p>We received a request to reset your password. Click the button below to set a new password:</p>
+  <p>We received a request to reset your password. Click the link below to set a new password:</p>
   <p><a href="${params.url}" style="display: inline-block; padding: 12px 24px; background: #0052cc; color: #fff; text-decoration: none; border-radius: 6px;">Reset Password</a></p>
   <p>Or copy and paste this URL into your browser:</p>
   <p><code>${params.url}</code></p>
@@ -27,8 +29,13 @@ export function sendPasswordResetEmail(params: PasswordResetEmailParams): void {
 </body>
 </html>`;
 
-  logger.info({ to: params.to, subject: "Reset Your Password" }, "sending password reset email (dev mode)");
-  logger.info({ to: params.to, subject: "Reset Your Password", body: html }, "password reset email content");
+  logger.info({ to: params.to, subject: "Reset your password" }, "sending password reset email");
+
+  void sendEmail({
+    to: params.to,
+    subject: "Reset your password",
+    html,
+  });
 }
 
 export function buildPasswordResetUrl(token: string): string {
@@ -36,10 +43,7 @@ export function buildPasswordResetUrl(token: string): string {
   return `${baseUrl}/reset-password?token=${token}`;
 }
 
-export function extractResetToken(url: string): string | null {
-  try {
-    return new URL(url).searchParams.get("token");
-  } catch {
-    return null;
-  }
+export function extractResetToken(url: string): string {
+  const match = url.match(/token=([^&]+)/);
+  return match?.[1] ?? url;
 }

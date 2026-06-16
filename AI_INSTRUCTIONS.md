@@ -13,6 +13,11 @@
 - **NEVER** violate Clean Architecture boundaries. Domain layer must NOT depend on Infrastructure layer.
 - Repository interfaces belong in the domain layer. Implementations belong in the infrastructure layer.
 - Use cases orchestrate domain objects. They do NOT contain database or HTTP logic.
+- Prefer the simplest architecture that satisfies long-term requirements.
+- Architecture should minimize coupling and maximize cohesion.
+- Remove unnecessary abstractions before introducing new ones.
+- Every architectural decision should improve maintainability, scalability, or correctness.
+- Complexity must be justified by measurable business or technical value.
 
 ### 1.2 Repository Pattern
 
@@ -68,6 +73,11 @@
 - Pure functions preferred over functions with side effects.
 - Functions should do one thing. Max 30 lines per function.
 - Minimize optional parameters — prefer explicit overloads or options objects.
+- Prefer early returns over nested conditions.
+- Avoid boolean parameters that change function behavior.
+- Functions should be deterministic whenever practical.
+- Side effects should be isolated from business logic.
+- Prefer immutable transformations over object mutation.
 
 ---
 
@@ -266,6 +276,11 @@ Every query should define:
 - gcTime
 - queryKey
 - retry strategy
+- Prevent duplicate network requests whenever possible.
+- Deduplicate concurrent queries.
+- Prevent stale responses from overwriting newer state.
+- Cancel obsolete requests before starting new ones.
+- Every mutation should be safe under concurrent execution.
 
 Use optimistic updates only when rollback is possible.
 
@@ -468,6 +483,11 @@ over indexing deleted records.
 - Cache keys follow the pattern: `tenant:{tenantId}:{domain}:{entity}:{id}:{field}`
 - Set appropriate TTLs. Never cache without TTL.
 - Invalidate cache on mutations, not on reads.
+- Cache consistency is more important than cache hit ratio.
+- Never serve stale data after critical mutations.
+- Prevent cache stampedes for high-traffic keys.
+- Prefer cache-aside strategy unless another pattern is justified.
+- Cache invalidation should be deterministic.
 
 ### 4.4 Logging
 
@@ -495,12 +515,37 @@ over indexing deleted records.
 - Use parameterized queries / prepared statements for all database operations.
 - Escape output in all rendering contexts.
 - Set CSP headers on all responses.
+- Treat all external input as untrusted.
+- Validate before authorization and business logic execution.
+- Prevent mass assignment vulnerabilities.
+- Prevent path traversal and command injection.
+- Never execute user-controlled input without explicit validation and sanitization.
 
 ### 5.3 Secrets
 
 - NEVER commit secrets, API keys, tokens, passwords, or connection strings.
 - All secrets are environment variables. Access them through `@repo/config`.
 - `.env` files are gitignored. Use `.env.example` as the template.
+
+### 5.4 Concurrency
+
+- Every mutation must be safe against concurrent execution.
+- Assume duplicate requests can occur at any time.
+- APIs should be idempotent whenever possible.
+- Prevent double-submit and replay attacks.
+- Use optimistic concurrency control or versioning when data consistency matters.
+- Avoid lost updates caused by stale writes.
+- Design mutations to be retry-safe.
+- Never assume requests arrive sequentially.
+- Always consider multi-tab and multi-device scenarios.
+
+### 5.5 Idempotency
+
+- Every destructive or financial action should support idempotency.
+- Duplicate requests must not create duplicate side effects.
+- Prefer idempotency keys for external integrations.
+- Retried requests should safely return previous results.
+- Side effects must execute exactly once whenever practical.
 
 ---
 
@@ -519,6 +564,13 @@ over indexing deleted records.
 - Use factories/fixtures for test data, not production data.
 - Mock external services (OpenRouter, Inngest, Redis, R2) in unit tests.
 - Test error cases, edge cases, and happy paths.
+- Test concurrent execution scenarios.
+- Test retry behavior.
+- Test idempotency.
+- Test race conditions.
+- Test failure recovery paths.
+- Test partial failures.
+- Test timeout scenarios.
 
 ### 6.3 Database Performance Tests
 
@@ -555,12 +607,20 @@ over indexing deleted records.
 9. Update NEXT_STEP.md to point to the next step
 10. Update CHANGELOG.md with a summary of changes
 11. Update ROADMAP.md if scope changed
+12. Review the implementation for unnecessary complexity.
+13. Eliminate duplicated logic and duplicated state.
+14. Verify no unnecessary network requests or rerenders exist.
+15. Refactor if a significantly simpler or more maintainable architecture exists.
+16. Verify the implementation is production-ready before marking the task complete.
 
 ### 7.3 Scope Management
 
 - Do NOT implement features outside the current step's scope.
 - Do NOT modify files outside the current step's `Files To Modify` list.
 - If you discover missing functionality, document it as technical debt in STATUS.md, not as a feature addition.
+- Do NOT introduce abstractions without at least two concrete use cases.
+- Do NOT optimize for hypothetical future requirements.
+- Prefer incremental evolution over speculative architecture.
 
 ### 7.4 When Blocked
 
@@ -577,6 +637,9 @@ over indexing deleted records.
 - Architecture changes require an ADR.
 - API changes require documentation in `docs/api/`.
 - All documentation uses markdown. Diagrams use Mermaid.
+- Document architectural decisions, not implementation details.
+- Documentation should explain "why", not only "how".
+- Keep documentation synchronized with code changes.
 
 ---
 
@@ -607,5 +670,261 @@ Violations of this constitution should be:
 1. Flagged in code review
 2. Documented as technical debt in STATUS.md
 3. Fixed before merging
+4. Before considering a task complete, challenge every implementation decision.
+5. Assume the first solution is not the best solution.
+6. Continuously simplify architecture while preserving correctness.
+7. Do not stop when the code works.
+8. Stop only when no meaningful improvement remains in correctness, maintainability, scalability, performance, security, or readability.
 
 AI assistants are expected to follow this constitution autonomously. If a trade-off is necessary, document the exception with a comment explaining why and reference this document.
+
+---
+
+## 11. Engineering Philosophy
+
+- The best code is code that does not need to exist.
+- Prefer deleting code over adding abstractions.
+- Simplicity beats cleverness.
+- Readability beats brevity.
+- Explicit behavior beats implicit magic.
+- Consistency beats personal preference.
+- Optimize for maintainability over short-term speed.
+- Every dependency introduces long-term maintenance cost.
+- Every abstraction must solve an existing problem, not a hypothetical one.
+- Prefer composition over inheritance.
+- Prefer data-driven design over conditional branching.
+- Design for change, not for today's implementation.
+
+---
+
+## 12. Critical Thinking
+
+Before implementing anything, always ask internally:
+
+- Is this actually required?
+- Is there a simpler solution?
+- Is this solving the root cause instead of the symptom?
+- Does this introduce unnecessary complexity?
+- Will this still be understandable after one year?
+- Does this improve or reduce maintainability?
+- Is this aligned with existing project patterns?
+- Is this production-safe under failure conditions?
+
+Never implement a solution simply because it works.
+Always seek the simplest correct solution.
+
+---
+
+## 13. State Machine Thinking
+
+Every interactive feature should be designed as a finite state machine.
+
+Explicitly identify:
+
+- idle
+- loading
+- success
+- error
+- retrying
+- cancelled
+- unauthorized
+- expired
+
+Avoid impossible states.
+
+Derived state should be computed instead of duplicated.
+
+State transitions should be deterministic.
+
+Loading flags should not be scattered across unrelated components.
+
+Prefer one source of truth for state transitions.
+
+---
+
+## 14. API Design
+
+APIs are contracts.
+
+Never break backward compatibility without versioning.
+
+Endpoints should be:
+
+- predictable
+- idempotent
+- self-descriptive
+- resource-oriented
+
+Use proper HTTP status codes.
+
+Return consistent response shapes.
+
+Errors should include:
+
+- code
+- message
+- optional details
+
+Avoid boolean flags that change endpoint behavior.
+
+Prefer explicit endpoints over overloaded APIs.
+
+Design APIs for long-term evolution.
+
+---
+
+## 15. Production Readiness
+
+Code is not complete until it is production ready.
+
+Every feature should consider:
+
+- error handling
+- loading states
+- retries
+- timeouts
+- cancellation
+- race conditions
+- concurrency
+- idempotency
+- observability
+- accessibility
+- security
+- scalability
+- monitoring
+- logging
+- rollback strategy
+
+Never assume ideal network conditions.
+
+Never assume a single user.
+
+Never assume sequential execution.
+
+Always design for distributed systems.
+
+---
+
+## 16. Self Review
+
+Before considering implementation complete, perform an internal review.
+
+Verify:
+
+- architecture consistency
+- type safety
+- security
+- performance
+- accessibility
+- error handling
+- edge cases
+- race conditions
+- concurrency safety
+- memory usage
+- bundle size
+- unnecessary rerenders
+- unnecessary abstractions
+- duplicated logic
+- dead code
+- maintainability
+- documentation
+
+Refactor when a simpler or more maintainable solution exists.
+
+Do not stop at "working".
+
+Stop only when the implementation is clean, consistent, and production ready.
+
+Additionally verify:
+
+- no memory leaks
+- no race conditions
+- no stale closures
+- no hydration mismatch
+- no unnecessary effects
+- no duplicated network requests
+- no unnecessary client components
+- no unstable query keys
+- no unnecessary global state
+- no over-fetching
+- no under-fetching
+- no deadlocks
+- no circular dependencies
+
+---
+
+## 17. Decision Hierarchy
+
+When multiple valid solutions exist, prioritize in this order:
+
+1. Correctness
+2. Security
+3. Simplicity
+4. Maintainability
+5. Consistency
+6. Performance
+7. Developer Experience
+8. Extensibility
+
+Never sacrifice correctness for performance.
+
+Never sacrifice maintainability for clever optimizations.
+
+Prefer long-term project health over short-term implementation speed.
+
+---
+
+## 18. Performance Mindset
+
+Performance is a feature.
+
+Before adding new code, evaluate its impact on:
+
+- CPU usage
+- memory allocation
+- bundle size
+- network requests
+- database round trips
+- hydration cost
+- rerenders
+- cache efficiency
+- startup time
+- latency
+
+Avoid unnecessary allocations.
+
+Avoid unnecessary object creation inside loops.
+
+Avoid repeated computations.
+
+Avoid N+1 query patterns.
+
+Prefer batching over multiple sequential requests.
+
+Prefer streaming over blocking.
+
+Prefer lazy loading over eager loading.
+
+Measure before optimizing.
+
+Optimize architecture before micro-optimizations.
+
+Code should scale from 10 users to 1 million users without fundamental redesign whenever practical.
+
+---
+
+## 19. Root Cause Analysis
+
+Never fix symptoms without understanding the root cause.
+
+When encountering a bug:
+
+1. Identify the root cause.
+2. Explain why it happened.
+3. Fix the underlying issue.
+4. Verify that similar issues cannot occur elsewhere.
+5. Avoid introducing regressions.
+
+Do not patch problems with temporary workarounds unless explicitly requested.
+
+Prefer structural fixes over conditional fixes.

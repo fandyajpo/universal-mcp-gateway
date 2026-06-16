@@ -48,7 +48,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
       joinedAt: new Date(),
     };
 
-    const result = await WorkspaceModel.updateOne(
+    const result = await this.model.updateOne(
       { _id: workspaceId, tenantId: this.tenantId, "members.userId": { $ne: userId } },
       {
         $push: { members: entry },
@@ -57,7 +57,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     );
 
     if (result.matchedCount === 0) {
-      const exists = await WorkspaceModel.exists({ _id: workspaceId, tenantId: this.tenantId });
+      const exists = await this.model.exists({ _id: workspaceId, tenantId: this.tenantId });
       if (!exists) throw new Error("Workspace not found");
       throw new Error("User is already a member");
     }
@@ -66,7 +66,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
   }
 
   async removeMember(workspaceId: string, userId: string): Promise<boolean> {
-    const result = await WorkspaceModel.updateOne(
+    const result = await this.model.updateOne(
       { _id: workspaceId, tenantId: this.tenantId, "members.userId": userId, "members.deletedAt": null },
       { $set: { "members.$.deletedAt": new Date() }, $inc: { memberCount: -1 } },
     );
@@ -78,7 +78,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     userId: string,
     role: (typeof WorkspaceRole)[keyof typeof WorkspaceRole],
   ): Promise<boolean> {
-    const result = await WorkspaceModel.updateOne(
+    const result = await this.model.updateOne(
       { _id: workspaceId, tenantId: this.tenantId, "members.userId": userId, "members.deletedAt": null },
       { $set: { "members.$.role": role } },
     );
@@ -100,7 +100,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     }
 
     const countPipeline = [...pipeline, { $count: "total" }];
-    const countResult = await WorkspaceModel.aggregate<{ total: number }>(countPipeline);
+    const countResult = await this.model.aggregate<{ total: number }>(countPipeline);
     const total = countResult.length > 0 ? (countResult[0]?.total ?? 0) : 0;
 
     if (filters?.skip) pipeline.push({ $skip: filters.skip });
@@ -133,7 +133,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
       },
       });
 
-    const members = await WorkspaceModel.aggregate<MemberWithUser>(pipeline);
+    const members = await this.model.aggregate<MemberWithUser>(pipeline);
     return { members, total };
   }
 
@@ -146,7 +146,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
     );
     if (!isAdmin) throw new Error("New owner must be an admin member of the workspace");
 
-    await WorkspaceModel.updateOne(
+    await this.model.updateOne(
       { _id: workspaceId, tenantId: this.tenantId },
       {
         $set: { ownerId: newOwnerId },
@@ -157,7 +157,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
   }
 
   async archive(workspaceId: string): Promise<IWorkspace | null> {
-    return WorkspaceModel.findOneAndUpdate(
+    return this.model.findOneAndUpdate(
       { _id: workspaceId, tenantId: this.tenantId, deletedAt: null },
       { $set: { deletedAt: new Date() } },
       { new: true },
@@ -165,7 +165,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
   }
 
   async restore(workspaceId: string): Promise<IWorkspace | null> {
-    return WorkspaceModel.findOneAndUpdate(
+    return this.model.findOneAndUpdate(
       { _id: workspaceId, tenantId: this.tenantId, deletedAt: { $ne: null } },
       { $set: { deletedAt: null } },
       { new: true },
@@ -178,7 +178,7 @@ export class WorkspaceRepository extends TenantAwareRepository<IWorkspace> {
       setObj[`settings.${key}`] = value;
     }
 
-    return WorkspaceModel.findOneAndUpdate(
+    return this.model.findOneAndUpdate(
       { _id: workspaceId, tenantId: this.tenantId },
       { $set: setObj },
       { new: true },

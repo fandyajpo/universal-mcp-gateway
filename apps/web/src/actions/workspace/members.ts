@@ -1,5 +1,8 @@
 "use server";
 
+import { createInvitationService, createRBACService, createWorkspaceService } from "@repo/auth";
+import { connect, InvitationRepository, WorkspaceRepository, UserRepository, IInvitation } from "@repo/database";
+
 export interface MemberActionResult {
   success: boolean;
   error?: string;
@@ -10,6 +13,105 @@ export interface InviteActionResult {
   success: boolean;
   error?: string;
   code?: string;
+}
+
+export interface InvitationData {
+  _id: string;
+  id: string;
+  inviteeEmail: string;
+  role: string;
+  status: string;
+  message?: string;
+  createdAt: string;
+  expiresAt: string;
+  token: string;
+}
+
+export interface GetInvitationsResult {
+  success: boolean;
+  invitations?: InvitationData[];
+  error?: string;
+  code?: string;
+}
+
+export async function getInvitationsAction(
+  workspaceId: string,
+): Promise<GetInvitationsResult> {
+  try {
+    const { headers } = await import("next/headers");
+    const requesterId = (await headers()).get("x-user-id");
+    if (!requesterId) {
+      return { success: false, error: "Unauthorized", code: "unauthorized" };
+    }
+
+    await connect();
+
+    const repo = new InvitationRepository();
+    const result = await repo.findByWorkspace(workspaceId, { status: "pending" });
+
+    return {
+      success: true,
+      invitations: result.invitations.map((inv) => ({
+        _id: String((inv as IInvitation & Record<string, unknown>)._id),
+        id: String((inv as IInvitation & Record<string, unknown>).id ?? (inv as IInvitation & Record<string, unknown>)._id),
+        inviteeEmail: inv.inviteeEmail,
+        role: inv.role,
+        status: inv.status,
+        message: inv.message,
+        createdAt: inv.createdAt.toISOString(),
+        expiresAt: inv.expiresAt.toISOString(),
+        token: inv.token,
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to load invitations",
+      code: "unknown",
+    };
+  }
+}
+
+export async function respondToInvitationAction(
+  token: string,
+  actionType: "accept" | "decline",
+): Promise<InviteActionResult> {
+  try {
+    const { headers } = await import("next/headers");
+    const requesterId = (await headers()).get("x-user-id");
+    if (!requesterId) {
+      return { success: false, error: "Unauthorized", code: "unauthorized" };
+    }
+
+    await connect();
+
+    const invitationRepo = new InvitationRepository();
+    const workspaceRepo = new WorkspaceRepository(requesterId);
+    const userRepo = new UserRepository();
+    const getUserRole = (): Promise<"owner" | "admin" | "member" | "viewer" | null> => Promise.resolve(null);
+    const rbac = createRBACService(getUserRole);
+    const service = createInvitationService(invitationRepo, workspaceRepo, userRepo, rbac);
+
+    const result = actionType === "accept"
+      ? await service.accept(token, requesterId)
+      : await service.decline(token);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error ?? `Failed to ${actionType} invitation`,
+        code: result.code?.toLowerCase() ?? "unknown",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : `Failed to ${actionType} invitation`,
+      code: "unknown",
+    };
+  }
 }
 
 export async function inviteMemberAction(
@@ -24,11 +126,6 @@ export async function inviteMemberAction(
     if (!requesterId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository, InvitationRepository },
-      { createInvitationService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 
@@ -88,11 +185,6 @@ export async function cancelInvitationAction(
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
 
-    const [
-      { connect, WorkspaceRepository, UserRepository, InvitationRepository },
-      { createInvitationService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
-
     await connect();
 
     const workspaceRepo = new WorkspaceRepository(requesterId);
@@ -137,11 +229,6 @@ export async function resendInvitationAction(
     if (!requesterId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository, InvitationRepository },
-      { createInvitationService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 
@@ -189,11 +276,6 @@ export async function changeMemberRoleAction(
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
 
-    const [
-      { connect, WorkspaceRepository },
-      { createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
-
     await connect();
 
     const workspaceRepo = new WorkspaceRepository(requesterId);
@@ -236,11 +318,6 @@ export async function removeMemberAction(
     if (!requesterId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 

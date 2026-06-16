@@ -1,5 +1,8 @@
 "use server";
 
+import { createWorkspaceService, createRBACService } from "@repo/auth";
+import { connect, WorkspaceRepository, UserRepository } from "@repo/database";
+
 export interface ArchiveWorkspaceActionResult {
   success: boolean;
   error?: string;
@@ -15,11 +18,6 @@ export async function archiveWorkspaceAction(
     if (!userId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 
@@ -63,11 +61,6 @@ export async function restoreWorkspaceAction(
     if (!userId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 

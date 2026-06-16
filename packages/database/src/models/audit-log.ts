@@ -1,6 +1,6 @@
 import { Schema, model, Model } from "mongoose";
 
-import { timestampsPlugin, toJSONTransform } from "../schema";
+import { timestampsPlugin, toJSONTransform, softDeletePlugin } from "../schema";
 
 export interface IAuditLog {
   tenantId: string;
@@ -38,6 +38,7 @@ auditLogSchema.index({ action: 1, createdAt: -1 }, { name: "idx_auditlogs_action
 auditLogSchema.index({ entityType: 1, entityId: 1, createdAt: -1 }, { name: "idx_auditlogs_entityType_entityId_createdAt" });
 
 timestampsPlugin(auditLogSchema);
+softDeletePlugin(auditLogSchema);
 toJSONTransform(auditLogSchema);
 
 export const AuditLogModel: Model<IAuditLog> = model<IAuditLog>("AuditLog", auditLogSchema);

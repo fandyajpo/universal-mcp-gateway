@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui";
+import { useRespondToInvitation } from "@/hooks/use-invitations";
 
 interface InvitationActionsProps {
   token: string;
@@ -14,52 +13,23 @@ interface InvitationActionsProps {
 
 export function InvitationActions({ token, userId, action }: InvitationActionsProps): React.ReactNode {
   const router = useRouter();
-  const [isPending, setIsPending] = useState(false);
-  const [status, setStatus] = useState<"idle" | "accepted" | "declined" | "error">("idle");
-  const [error, setError] = useState("");
+  const mutation = useRespondToInvitation();
 
-  async function handleResponse(actionType: "accept" | "decline"): Promise<void> {
-    setIsPending(true);
-    setError("");
-
-    try {
-      const res = await fetch(`/api/invitations/${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: actionType }),
-      });
-
-      if (res.ok) {
-        setStatus(actionType === "accept" ? "accepted" : "declined");
-        if (actionType === "accept") {
-          setTimeout(function () {
-            router.refresh();
-          }, 2000);
-        }
-      } else {
-        const json = await res.json() as { error?: string };
-        setError(json.error ?? "Something went wrong");
-        setStatus("error");
-      }
-    } catch {
-      setError("Network error. Please try again.");
-      setStatus("error");
-    } finally {
-      setIsPending(false);
-    }
+  function handleResponse(actionType: "accept" | "decline"): void {
+    mutation.mutate({ token, action: actionType });
   }
 
-  if (status === "accepted") {
+  if (mutation.isSuccess && mutation.variables.action === "accept") {
     return (
       <div className="flex flex-col items-center gap-3">
         <div className="rounded-md bg-emerald-50 p-4 text-sm text-emerald-700">
-          You have accepted the invitation! Redirecting\u2026
+          You have accepted the invitation! Redirecting&hellip;
         </div>
       </div>
     );
   }
 
-  if (status === "declined") {
+  if (mutation.isSuccess && mutation.variables.action === "decline") {
     return (
       <div className="flex flex-col items-center gap-3">
         <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-600">
@@ -77,10 +47,10 @@ export function InvitationActions({ token, userId, action }: InvitationActionsPr
       {action === "accept" && userId ? (
         <Button
           size="lg"
-          disabled={isPending}
-          onClick={function (): void { void handleResponse("accept"); }}
+          disabled={mutation.isPending}
+          onClick={function (): void { handleResponse("accept"); }}
         >
-          {isPending ? "Processing\u2026" : "Accept Invitation"}
+          {mutation.isPending ? "Processing&hellip;" : "Accept Invitation"}
         </Button>
       ) : null}
 
@@ -88,10 +58,10 @@ export function InvitationActions({ token, userId, action }: InvitationActionsPr
         <Button
           variant="outline"
           size="lg"
-          disabled={isPending}
-          onClick={function (): void { void handleResponse("decline"); }}
+          disabled={mutation.isPending}
+          onClick={function (): void { handleResponse("decline"); }}
         >
-          {isPending ? "Processing\u2026" : "Decline Invitation"}
+          {mutation.isPending ? "Processing&hellip;" : "Decline Invitation"}
         </Button>
       ) : null}
 
@@ -99,25 +69,25 @@ export function InvitationActions({ token, userId, action }: InvitationActionsPr
         <div className="flex gap-3">
           <Button
             size="lg"
-            disabled={isPending}
-            onClick={function (): void { void handleResponse("accept"); }}
+            disabled={mutation.isPending}
+            onClick={function (): void { handleResponse("accept"); }}
           >
-            {isPending ? "Processing\u2026" : "Accept Invitation"}
+            {mutation.isPending ? "Processing&hellip;" : "Accept Invitation"}
           </Button>
           <Button
             variant="outline"
             size="lg"
-            disabled={isPending}
-            onClick={function (): void { void handleResponse("decline"); }}
+            disabled={mutation.isPending}
+            onClick={function (): void { handleResponse("decline"); }}
           >
             Decline
           </Button>
         </div>
       ) : null}
 
-      {error ? (
+      {mutation.error ? (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
+          {mutation.error.message}
         </div>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 import { Schema, model, Model } from "mongoose";
 
-import { timestampsPlugin, toJSONTransform } from "../schema";
+import { timestampsPlugin, toJSONTransform, softDeletePlugin } from "../schema";
 import { WorkspaceRole } from "@repo/types";
 
 export type InvitationStatus = "pending" | "accepted" | "declined" | "cancelled" | "expired";
@@ -53,6 +53,7 @@ invitationSchema.index({ inviteeEmail: 1, workspaceId: 1, status: 1 }, { name: "
 invitationSchema.index({ workspaceId: 1, createdAt: 1 }, { name: "idx_invitations_workspaceId_createdAt" });
 
 timestampsPlugin(invitationSchema);
+softDeletePlugin(invitationSchema);
 toJSONTransform(invitationSchema);
 
 export const InvitationModel: Model<IInvitation> = model<IInvitation>("Invitation", invitationSchema);

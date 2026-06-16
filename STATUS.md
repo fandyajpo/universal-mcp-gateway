@@ -7,17 +7,18 @@
 | Category | Count | Progress |
 |---|---|---|---|---|
 | Phases Total | 19 (00-18) | 5 completed |
-| Steps Total | ~220 | 74 completed |
+| Steps Total | ~220 | 83 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
 ## Current Phase
 
-**Phase 4: Database** — Complete.
+**Phase 5: Storage** — Complete.
+**Phase 6: PDF Processing** — In Progress (Steps 06.01-06.08 complete).
 
 ## Current Step
 
-**Step 04.06** — Phase 04 Verification — Verification completed. Phase 04 is done.
+**Step 06.08** — PDF Processing UI — Complete. Built drag-and-drop upload zone, document list with status badges, processing progress indicator, document detail page with metadata/extraction info, retry/delete actions, search/filter, polling for in-progress documents.
 
 ## Completed
 
@@ -523,17 +524,161 @@
   - Atlas connectivity intermittent — migration and seed commands work when cluster is reachable
   - `pnpm test` blocked by missing `mongodb-memory-server` (pre-existing)
   - Phase 04 marked complete
+- [x] Phase 05 Step 05.01: R2 Client Setup:
+  - `@repo/storage` package created (package.json, tsconfig.json, eslint.config.js, src/)
+  - `createR2Client` — singleton S3 client factory with R2 endpoint, region `auto`, config from `@repo/config`
+  - `createStorageService` — dependency-injected storage service with 6 operations: upload, download, delete, list, exists, getMetadata
+  - All operations use AWS SDK v3 commands (PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand)
+  - `@aws-sdk/s3-request-presigner` included as dependency for future signed URL step (05.03)
+  - 13 unit tests passing with mocked S3 client
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.02: File Upload Service:
+  - `uploadFile` — validates file type and size, generates storage key (`{workspaceId}/{entity}/{date}/{uuid}-{filename}`), uploads to R2 with metadata, creates Document record in MongoDB, returns `UploadResult` with download URL
+  - `uploadFiles` — batch upload with configurable concurrency (default 3 parallel)
+  - `deleteFile` — soft-deletes Document (via `TenantAwareRepository.deleteById`) and removes from R2
+  - `getFile` — finds Document by fileKey, fetches R2 metadata, returns `UploadResult` with download URL
+  - `extractDocumentId` helper handles the `id`/`_id` discrepancy between `create` (toObject) and `findOne` (lean)
+  - Compensating transaction: R2 upload cleanup on Document creation failure
+  - 12 unit tests passing with mocked storage service + DocumentRepository factory
+  - `pnpm lint` clean, `pnpm typecheck` clean
+  - Depends on `@repo/database` for `DocumentRepository` and `IDocument` type
+- [x] Phase 05 Step 05.03: Signed URL Generation:
+  - `generateDownloadUrl(key, expiresIn?)` — generates presigned GET URL via `getSignedUrl` + `GetObjectCommand`, default 1 hour expiry
+  - `generateUploadUrl(key, contentType, expiresIn?)` — generates presigned PUT URL via `getSignedUrl` + `PutObjectCommand`, for direct-to-S3 uploads
+  - `getPublicUrl(key)` — returns public URL by appending key to the configured `r2.publicUrl` base
+  - All signed URLs use AWS Signature V4 and cannot be used to list or delete objects (scope limited by the S3 command used)
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.04: File Type Validation:
+  - `packages/storage/src/validation/magic-bytes.ts` — 11 file type signatures with magic byte matching (PDF, PNG, JPEG, GIF, WebP, SVG, JSON, CSV, Markdown, plain text, ZIP)
+  - `packages/storage/src/validation/file-type.ts` — `validateFileType(buffer, allowedTypes?)` returns `{ valid, detectedType }`; `getAllowedTypesForEntity(entity)` returns entity-scoped type lists
+  - `packages/validation/src/schemas/storage.ts` — Zod schemas: `fileTypeResultSchema`, `fileSizeSchema`, `uploadOptionsSchema`
+  - Handles text-based types via content inspection (printable UTF-8 ratio, delimiter/pattern detection)
+  - `byteAt` helper provides proper type-narrowed access to `Uint8Array` elements
+  - `ALLOWED_FILE_TYPES` env var support for configurable type allowlist
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.05: Size Limits and Enforcement:
+  - `packages/storage/src/validation/size-limits.ts` — `getTierLimits(tier?)`, `validateFileSize(fileSize, tier?, customMax?)`, `validateTotalStorage(currentUsage, fileSize, tier?, customTotal?)`
+  - Tier limits: Free (10MB/file, 1GB total), Pro (50MB/file, 50GB total), Enterprise (500MB/file, 1TB total)
+  - `packages/storage/src/usage-tracker.ts` — `createUsageTracker(store)` with `getStorageUsage`, `trackUpload`, `trackDelete`
+  - `UsageStore` interface for pluggable persistence (Redis/MongoDB in-memory default)
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.06: Tenant Paths:
+  - `packages/storage/src/paths.ts` — `generateStorageKey(workspaceId, entity, filename)` with filename sanitization (null byte, path separator, `..`, special character removal)
+  - `parseStorageKey(key)` — regex-based reversal extracting workspaceId, entity, date, uuid, originalName
+  - `listWorkspaceFiles(workspaceId, entity?, prefix?)` — S3 ListObjectsV2 scoped to `{workspaceId}/` prefix
+  - `STORAGE_ENTITIES` const array and `StorageEntity` type for 6 entity types (documents, avatars, attachments, exports, connectors, temp)
+  - All exports added to barrel (functions + types: `ParsedStorageKey`, `StorageEntity`)
+  - 25 existing tests pass (no new tests needed for pure logic + S3 delegation)
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.07: Upload API Routes:
+  - `apps/web/src/app/api/files/upload/route.ts` — POST multipart upload with magic-bytes validation and tier-based size limits (413 if oversized)
+  - `apps/web/src/app/api/files/[fileId]/route.ts` — GET signed URL redirect (302), DELETE file from R2 + soft-delete Document
+  - `apps/web/src/app/api/files/[fileId]/metadata/route.ts` — GET file metadata (status, tags, dates, etc.)
+  - `apps/web/src/app/api/files/storage/route.ts` — GET storage usage stats with aggregation ($sum fileSize)
+  - `apps/web/src/actions/files/upload.ts` — Server Action `uploadFilesAction` with Zod+magic-bytes+size validation
+  - `apps/web/src/lib/file-upload.ts` — Client helpers: `uploadFile`, `uploadFiles`, `uploadFileWithXhr` (XHR progress), `deleteFile`, `getFileMetadata`
+  - All routes authenticated via `x-user-id`/`x-workspace-id` headers from middleware
+  - `@repo/storage` added as workspace dependency in `apps/web/package.json`
+  - `mongodb-memory-server` added to `@repo/database` devDependencies (fixed pre-existing typecheck error)
+  - `pnpm lint` clean, `pnpm typecheck` clean, `pnpm build` succeeds (4 new API routes in output)
+- [x] Phase 05 Step 05.08: Upload UI:
+  - `apps/web/src/hooks/use-file-upload.ts` — Upload queue hook with concurrency control (default 3 parallel), per-file progress via XHR, retry/cancel, state management
+  - `apps/web/src/components/ui/file-icon.tsx` — File type icon component with 25+ extension mappings and lucide-react icons (PDF red, image blue, code amber, etc.)
+  - `apps/web/src/components/ui/file-preview.tsx` — Image thumbnail preview (with error fallback) or file type icon placeholder
+  - `apps/web/src/components/ui/file-upload.tsx` — Drag-and-drop upload component with keyboard accessibility, hidden file input, file list with progress bars/status indicators/error messages, Upload/Cancel/Retry/Clear All action buttons, `onUploadComplete` callback
+  - `pnpm lint` clean, `pnpm typecheck` clean
+- [x] Phase 05 Step 05.09: Verification:
+  - All acceptance criteria verified: 25/25 `@repo/storage` tests pass, lint clean (storage, web, database, validation), typecheck clean, build succeeds (4/4 apps)
+  - Phase 05 marked complete
+- [x] Phase 06 Step 06.01: PDF Upload Flow:
+  - `apps/web/src/app/api/documents/pdf/upload/route.ts` — POST handler with PDF magic-byte validation (%PDF at offset 0), 50MB size limit, SHA-256 deduplication, R2 storage, Document record creation (status `uploading`), Inngest `pdf/uploaded` event emission
+  - `apps/web/src/app/api/documents/pdf/upload/schema.ts` — Zod schemas for upload form (optional password)
+  - `packages/rag/src/pdf/types.ts` — `PdfUploadedEventPayload` and `PdfUploadedEvent` types
+  - `packages/rag/src/index.ts` — export PDF types
+  - `packages/database/src/models/document.ts` — added `fileHash` field, `uploading` status enum value, `fileHash` index
+  - `packages/validation/src/schemas/document.ts` — added `pdfUploadResponseSchema`
+  - `packages/rag/eslint.config.js` — added missing lint config
+  - `packages/rag/package.json` — added missing `@repo/config-eslint` devDependency
+  - `apps/web/package.json` — added `inngest` and `zod` dependencies
+  - Lint clean, typecheck clean, build succeeds (route listed in output: `/api/documents/pdf/upload`)
+- [x] Phase 06 Step 06.02: Text Extraction Service:
+  - `packages/rag/src/pdf/types.ts` — added extraction result types (PdfBoundingBox, PdfFontInfo, PdfExtractedLine/Block/Page, PdfExtractionMetadata/Result)
+  - `packages/rag/src/pdf/events.ts` — created with PdfExtractStartedEvent, PdfExtractCompletedEvent, PdfExtractFailedEvent
+  - `packages/rag/src/pdf/extractor.ts` — main `extractText()` function: calls pdfjs-dist, validates results, detects scanned docs, calculates metadata, writes to MongoDB
+  - `packages/rag/src/pdf/extractor/pdfjs.ts` — pdfjs-dist `getTextContent()` with safe type extraction layer, text grouping into lines (vertical tolerance 0.3) then blocks (gap > 1.5× avg line height), font metadata from TextStyle.fontFamily + transform scaleY
+  - `packages/rag/src/pdf/extractor/utils.ts` — calculateTextLength, calculateTextDensity, isScannedDocument (<10 chars/page), detectLanguage (CJK/Cyrillic/Arabic/Devanagari/Latin heuristics), sortBlocksInReadingOrder (top-to-bottom, left-to-right), extractAllText, calculateConfidenceScore
+  - `packages/database/src/models/document.ts` — added IProcessedContent (text + pages with positional data), IExtractionMetadata (charCount, pageCount, extractionMethod, confidenceScore, language, extractedAt), Mongoose sub-schemas
+  - `packages/rag/src/index.ts` — exports all new types and extractText function
+  - `packages/rag/package.json` — added `pdfjs-dist ^6.0.0` dependency
+  - Uses pdfjs-dist (pure Node.js, no Python/PyMuPDF dependency) — works on Vercel serverless
+  - Lint clean, typecheck clean (rag, database, validation)
+- [x] Phase 06 Step 06.04: Chunking Strategy:
+  - `packages/rag/src/pdf/chunker/types.ts` — Chunk, ChunkMetadata, ChunkStrategy (recursive/semantic/pdf), ChunkerOptions, ChunkDocumentOptions, HeadingInfo, config constants
+  - `packages/rag/src/pdf/chunker/utils.ts` — estimateTokenCount (chars/4 heuristic), estimateAverageBodyFontSize, detectHeadingLevel, extractHeadings, buildSectionPath, page text extraction helpers
+  - `packages/rag/src/pdf/chunker/strategies/recursive.ts` — hierarchical splitting by \n\n → \n → sentence → word, configurable overlap extraction
+  - `packages/rag/src/pdf/chunker/strategies/semantic.ts` — topic-boundary splitting via heading analysis, sections with confidence scoring, large section sub-chunking with overlap
+  - `packages/rag/src/pdf/chunker/strategies/pdf.ts` — PDF-aware section splitting using font metadata for block grouping, orphaned heading merging, heading-led content assembly
+  - `packages/rag/src/pdf/chunker.ts` — entry point with strategy auto-selection (pdf for docs >5k chars with font variation, recursive fallback), chunk size clamping (256-4096), overlap clamping (max 25%)
+  - `packages/rag/src/pdf/types.ts` — re-exports Chunk, ChunkMetadata, HeadingInfo, ChunkerOptions, ChunkDocumentOptions from chunker types
+  - `packages/rag/src/pdf/events.ts` — added PdfChunkStartedEvent, PdfChunkCompletedEvent, PdfChunkFailedEvent with payloads
+  - `packages/rag/src/index.ts` — exports chunkDocument, ChunkResult, chunk types, chunk events
+  - Lint clean, typecheck clean (rag, database, validation)
 
-## Not Started
+- [x] Phase 06 Step 06.03: OCR Integration:
+  - `packages/rag/src/pdf/ocr.ts` — `runOcr()` entry point, `getPageSizes()` helper, concurrent page processing (max 2)
+  - `packages/rag/src/pdf/ocr/renderer.ts` — `renderPageToPng()` via sharp with 30s timeout, `PageRenderError` class
+  - `packages/rag/src/pdf/ocr/recognizer.ts` — `recognizeImage()` via tesseract.js with safe type extraction from `Record<string, unknown>` response
+  - `packages/rag/src/pdf/ocr/types.ts` — `OcrWord`, `OcrLine`, `OcrBlock`, `OcrPage`, `OcrResult`, `OcrOptions`
+  - Scanned document detection: <10 chars/page average triggers OCR fallback in `extractText()`
+  - `packages/rag/src/index.ts` — exports `runOcr`, `getPageSizes`, OCR types
+  - `packages/rag/package.json` — added `sharp ^0.33.0`, `tesseract.js ^5.0.0`
+  - Lint clean, typecheck clean
 
-- App implementation code (apps/admin, apps/docs, apps/landing need pages, components, API routes)
-- Errors package (@repo/errors)
-- Phase 04 Steps 04.06: Verification
+- [x] Phase 06 Step 06.05: Metadata Extraction:
+  - `packages/rag/src/pdf/metadata.ts` — `extractMetadata()` using pdfjs-dist `getMetadata()` and `getPageLabels()`
+  - `packages/rag/src/pdf/metadata/types.ts` — `PdfMetadataResult`, `PdfInfoMetadata`, `PdfTocEntry`, `PdfPageDimension`
+  - Extracts: title, author, subject, keywords, creator, producer, creationDate, modDate, PDF version, page dimensions, TOC outline
+  - `packages/database/src/models/document.ts` — added `IPdfMetadata`, `IPdfInfoMetadata`, `IPdfTocEntry`, `IPdfPageDimension` interfaces
+  - Lint clean, typecheck clean
+
+- [x] Phase 06 Step 06.06: Table Extraction:
+  - `packages/rag/src/pdf/tables.ts` — `extractTables()` entry point with positional text alignment analysis
+  - `packages/rag/src/pdf/tables/types.ts` — `PdfTable`, `PdfTableCell`, `PdfTableRow`, `PdfTableFormats`, `ExtractTablesOptions`, `ExtractTablesResult`
+  - Three output formats: JSON, CSV, Markdown
+  - Multi-page table merging, confidence scoring, low-confidence table segregation
+  - Python/Camelot-py sidecar (optional, degrades gracefully to positional-only)
+  - `packages/database/src/models/document.ts` — added `ITable`, `ITableCell`, `ITableRow`, `ITableFormats` interfaces and schema
+  - Lint clean, typecheck clean
+
+- [x] Phase 06 Step 06.07: Progress Tracking (Inngest):
+  - `packages/rag/src/pdf/progress/events.ts` — typed Inngest events for all pipeline steps: `pdf/{step}/started`, `pdf/{step}/completed`, `pdf/{step}/failed`, plus `pdf/processing-completed` and `pdf/processing-failed`
+  - `packages/rag/src/pdf/progress/service.ts` — `calculateProgress()` with weighted step percentages (upload: 5%, extract: 25%, ocr: 20%, chunk: 15%, embed: 25%, index: 10%), `buildStepMetric()`, `upsertStepMetric()` (idempotent), `allStepsCompleted()`
+  - `packages/rag/src/pdf/progress/tracker.ts` — `createProgressTracker()` Inngest function listening on `pdf/*`, updates MongoDB Document record with `$set`, rate-limited to 10 updates/sec per document, emits `pdf/processing-completed` or `pdf/processing-failed` on terminal states
+  - `packages/rag/src/pdf/progress/index.ts` — barrel exports
+  - `packages/database/src/models/document.ts` — added `IStepMetric` interface, progress tracking fields (`currentStep`, `stepsCompleted`, `processingStartedAt`, `processingCompletedAt`, `error`, `progress`, `stepMetrics`)
+  - `packages/rag/src/index.ts` — exports progress module
+  - `packages/rag/package.json` — added `inngest ^4.5.1` dependency
+  - Lint clean, typecheck clean
+- [x] Phase 06 Step 06.08: PDF Processing UI:
+  - `packages/types/src/models/pdf-document.ts` — PdfDocument type with all UI-facing fields
+  - `apps/web/src/actions/documents/pdf.ts` — Server actions: listDocumentsAction, getDocumentAction, deleteDocumentAction, retryDocumentAction
+  - `apps/web/src/hooks/use-documents.ts` — React Query hooks: useDocuments (with auto-polling for processing docs), useDocument, useDeleteDocument, useRetryDocument
+  - `apps/web/src/components/pdf/status-badge.tsx` — Color-coded status badge (uploading=yellow, processing=blue+pulse, ready=green, failed=red)
+  - `apps/web/src/components/pdf/upload-progress.tsx` — Upload progress bar with percentage
+  - `apps/web/src/components/pdf/processing-progress.tsx` — Step-based progress with step metrics, current step label, error state
+  - `apps/web/src/components/pdf/pdf-upload-zone.tsx` — Drag-and-drop upload with XHR progress, file type validation (PDF only), file size validation (50MB max), toast notifications
+  - `apps/web/src/components/pdf/document-list.tsx` — TanStack-managed table with name/status/progress/pages/date columns, sortable headers, search input, status filter buttons, retry/delete actions, loading skeleton, empty state
+  - `apps/web/src/components/pdf/document-detail.tsx` — Full detail view with document info card, PDF metadata card, processing progress, extraction results, error display, retry and delete with confirmation dialog
+  - `apps/web/src/app/(protected)/documents/page.tsx` — Client page with upload zone + document list
+  - `apps/web/src/app/(protected)/documents/[id]/page.tsx` — Server component with server-side data loading + client hydration for polling
+  - `apps/web/src/app/(protected)/documents/[id]/document-detail-client.tsx` — Client wrapper with React Query hydration
+  - `apps/web/src/components/ui/toaster.tsx` — Toast context provider (used by upload zone)
+  - `apps/web/src/hooks/use-toast.ts` — Toast hook
+  - `apps/web/src/app/layout.tsx` — Updated to include Toaster provider
+  - Lint clean, typecheck clean, build succeeds (routes listed: /documents, /documents/[id])
 - AI Gateway
 - MCP Gateway
 - RAG Engine
-- Storage integration
-- PDF processing
 - Connector SDK and implementations
 - Chat UI
 - Admin dashboard
@@ -556,7 +701,7 @@ None.
 | @repo/ui markdown-renderer.tsx lint errors | Low | Pre-existing: 4 errors (import order, no-base-to-string, no-img-element rule missing) |
 | @repo/cache typecheck error in test | Low | Pre-existing: TTLCache constructor argument mismatch in test |
 | @repo/utils typecheck error in test | Low | Pre-existing: retry sync vs async function signature in index.test.ts |
-| mongodb-memory-server not installed | Low | Pre-existing: @repo/database test file imports missing dev dependency |
+| @repo/database test imports fixed | Low | mongodb-memory-server devDependency added to resolve TS2307 |
 
 ## Architecture Violations
 
@@ -584,4 +729,4 @@ None detected.
 
 ## Last Updated
 
-2026-06-14 (Phase 04 complete)
+2026-06-16 (Phase 06 Step 06.07 complete)

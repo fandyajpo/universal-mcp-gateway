@@ -1,6 +1,6 @@
 import { Schema, model, Model } from "mongoose";
 
-import { timestampsPlugin, toJSONTransform } from "../schema";
+import { timestampsPlugin, toJSONTransform, softDeletePlugin } from "../schema";
 
 export interface IApiKey {
   tenantId: string;
@@ -39,6 +39,7 @@ apiKeySchema.index(
 );
 
 timestampsPlugin(apiKeySchema);
+softDeletePlugin(apiKeySchema);
 toJSONTransform(apiKeySchema);
 
 export const ApiKeyModel: Model<IApiKey> = model<IApiKey>("ApiKey", apiKeySchema);

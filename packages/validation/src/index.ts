@@ -41,6 +41,7 @@ export {
   documentChunkSchema,
   documentMetadataSchema,
   documentSourceSchema,
+  pdfUploadResponseSchema,
 } from "./schemas/document";
 
 // Connector schemas
@@ -81,6 +82,13 @@ export {
   retrievalStrategySchema,
   chunkStrategySchema,
 } from "./schemas/rag";
+
+// Storage schemas
+export {
+  fileTypeResultSchema,
+  fileSizeSchema,
+  uploadOptionsSchema,
+} from "./schemas/storage";
 
 // MCP schemas
 export {
@@ -147,6 +155,7 @@ export type {
   DocumentChunkSchema,
   DocumentMetadataSchema,
   DocumentSourceSchema,
+  PdfUploadResponseSchema,
 } from "./schemas/document";
 export type {
   ConnectorSchema,
@@ -177,6 +186,11 @@ export type {
   MCPErrorSchema,
   MCPCapabilitySchema,
 } from "./schemas/mcp";
+export type {
+  FileTypeResultSchema,
+  FileSizeSchema,
+  UploadOptionsSchema,
+} from "./schemas/storage";
 export type {
   ApiKeySchema,
   AuditLogSchema,

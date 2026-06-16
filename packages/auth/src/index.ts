@@ -16,8 +16,8 @@ export { generateTOTPSecret, generateTOTPUri, generateQRCodeDataUrl, verifyTOTPC
 export { generateRecoveryCodes, hashRecoveryCode, hashRecoveryCodes, verifyRecoveryCode } from "./services/recovery-codes";
 export { createOAuthService } from "./services/oauth-service";
 export type { OAuthService, OAuthServiceResult, LinkAccountResult, UnlinkAccountResult } from "./services/oauth-service";
-export { createSessionCache } from "./services/session-cache";
-export type { SessionCache, CachedSession } from "./services/session-cache";
+export { createSessionCache, sessionCacheKey } from "./services/session-cache";
+export type { SessionCache, CachedSession, SessionCacheMethods } from "./services/session-cache";
 export { createSessionService } from "./services/session-service";
 export type { SessionService, SessionServiceMethods, SessionInfo, VerifySessionResult } from "./services/session-service";
 export { createWorkspaceService } from "./services/workspace-service";

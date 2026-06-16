@@ -2,20 +2,20 @@
 
 ## Current Position
 
-- **Phase:** 05 (Storage)
-- **Step:** 05.01 — R2 Client Setup — Implement Cloudflare R2 client for object storage.
-- **Progress:** Phase 0 complete. Phase 1 complete. Phase 2 complete. Phase 3 complete. Phase 4 complete.
+- **Phase:** 06 (PDF Processing)
+- **Step:** 06.08 — PDF Processing UI — Complete. Drag-and-drop upload zone, document list with status badges/processing progress/retry-delete actions, document detail page with metadata/extraction results/error details, search/filter, polling for in-progress documents.
+- **Progress:** Phase 0 complete. Phase 1 complete. Phase 2 complete. Phase 3 complete. Phase 4 complete. Phase 5 complete. Phase 6 Steps 06.01-06.08 complete.
 
 ## Next Implementation
 
-**Step 05.01: R2 Client Setup**
+**Step 06.09 — PDF Pipeline Orchestration**
 
-Read `docs/implementation/phase-05/05.01-r2-client-setup.md` and implement the Cloudflare R2 storage client.
+Integrate the progress tracker into the actual PDF pipeline stages — emit `pdf/{step}/started` / `pdf/{step}/completed` / `pdf/{step}/failed` events from each processing step (extract, ocr, chunk, embed, index) and wire the pipeline up in an Inngest function chain.
 
 ## Dependencies
 
 | Dependency | Status | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Phase 0 | Done | Foundation complete |
 | Phase 1 | Done | Bootstrap complete |
 | Phase 2 | Done | Auth complete |

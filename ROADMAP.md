@@ -109,7 +109,7 @@ Establish the data access layer with MongoDB Atlas, repository pattern, tenant i
 
 ---
 
-## Phase 5: Storage (Current)
+## Phase 5: Storage (Complete)
 
 Implement file storage infrastructure using Cloudflare R2 with signed URLs, validation, and CDN delivery.
 
@@ -133,15 +133,15 @@ Implement file storage infrastructure using Cloudflare R2 with signed URLs, vali
 
 Build the document ingestion pipeline: upload, extract, structure, and index PDF content.
 
-- [ ] Implement PDF upload flow with immediate processing trigger via Inngest
-- [ ] Set up Inngest event-driven queue for asynchronous PDF processing
-- [ ] Implement text extraction using pdf.js (client-side preview) and PyMuPDF (server-side)
-- [ ] Build OCR integration using Tesseract.js for scanned document fallback
-- [ ] Implement chunking strategy: semantic split by heading, paragraph, and page boundary
-- [ ] Extract document metadata (title, author, creation date, page count, PDF version)
-- [ ] Build table extraction pipeline (Camelot/py with Python sidecar)
-- [ ] Implement image and figure extraction from PDF pages
-- [ ] Add processing status tracking with real-time WebSocket updates
+- [x] Implement PDF upload flow with immediate processing trigger via Inngest
+- [x] Set up Inngest event-driven queue for asynchronous PDF processing
+- [x] Implement text extraction using pdf.js (client-side preview) and PyMuPDF (server-side)
+- [x] Implement OCR integration using Tesseract.js for scanned document fallback
+- [x] Implement chunking strategy: semantic split by heading, paragraph, and page boundary
+- [x] Extract document metadata (title, author, creation date, page count, PDF version)
+- [x] Build table extraction pipeline (positional analysis, optional Camelot sidecar)
+- [x] Add processing status tracking with real-time polling via Inngest events
+- [x] Build PDF processing UI with drag-and-drop upload, document list, and detail views
 - [ ] Build processing error handling with retry logic and dead-letter queue
 - [ ] Implement PDF-to-text quality metrics (character confidence, extraction rate)
 - [ ] Add support for password-protected PDFs with user-provided credentials

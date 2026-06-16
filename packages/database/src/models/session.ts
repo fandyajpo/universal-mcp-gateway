@@ -1,6 +1,6 @@
 import { Schema, model, Model } from "mongoose";
 
-import { timestampsPlugin, toJSONTransform } from "../schema";
+import { timestampsPlugin, toJSONTransform, softDeletePlugin } from "../schema";
 
 export interface ISession {
   tenantId: string;
@@ -34,6 +34,7 @@ sessionSchema.index({ userId: 1, isValid: 1 }, { name: "idx_sessions_userId_isVa
 sessionSchema.index({ tenantId: 1, lastActivityAt: 1 }, { name: "idx_sessions_tenantId_lastActivityAt" });
 
 timestampsPlugin(sessionSchema);
+softDeletePlugin(sessionSchema);
 toJSONTransform(sessionSchema);
 
 export const SessionModel: Model<ISession> = model<ISession>("Session", sessionSchema);

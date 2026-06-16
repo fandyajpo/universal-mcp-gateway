@@ -1,5 +1,7 @@
 "use server";
 
+import { createWorkspaceService, createRBACService } from "@repo/auth";
+import { connect, WorkspaceRepository, UserRepository } from "@repo/database";
 import { createWorkspaceSchema } from "@repo/validation";
 
 export interface CreateWorkspaceActionResult {
@@ -43,11 +45,6 @@ export async function createWorkspaceAction(
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
 
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
-
     await connect();
 
     const workspaceRepo = new WorkspaceRepository(userId);
@@ -85,8 +82,6 @@ export async function checkSlugAction(slug: string): Promise<CheckSlugResult> {
   }
 
   try {
-    const { connect, WorkspaceRepository } = await import("@repo/database");
-
     await connect();
 
     const repo = new WorkspaceRepository("system");

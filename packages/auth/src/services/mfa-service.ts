@@ -1,7 +1,8 @@
-import { generateRecoveryCodes, hashRecoveryCodes, verifyRecoveryCode } from "./recovery-codes";
+import { createHash } from "node:crypto";
+import { generateRecoveryCodes, hashRecoveryCodes } from "./recovery-codes";
 import { generateTOTPSecret, generateTOTPUri, generateQRCodeDataUrl, verifyTOTPCode } from "./totp";
 import { createCacheClient } from "@repo/cache";
-import { encrypt, decrypt, hashString, hmac } from "@repo/crypto";
+import { encrypt, decrypt, hmac } from "@repo/crypto";
 import { UserModel } from "@repo/database";
 import { createLogger } from "@repo/logger";
 
@@ -10,11 +11,22 @@ const logger = createLogger("@repo/auth:mfa");
 const MFA_CHALLENGE_TTL = 300;
 const MFA_TRUST_TTL = 30 * 24 * 60 * 60;
 const MFA_CACHE_PREFIX = "mfa_challenge";
-const MFA_TRUST_SECRET = process.env.MFA_TRUST_SECRET ?? process.env.AUTH_SECRET ?? "dev-mfa-trust-secret";
+
+function getMFATrustSecret(): string {
+  const secret = process.env.MFA_TRUST_SECRET ?? process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error("MFA_TRUST_SECRET or AUTH_SECRET environment variable is required");
+  }
+  return secret;
+}
 
 function deriveEncryptionKey(): string {
-  const raw = process.env.MFA_ENCRYPTION_KEY ?? process.env.AUTH_SECRET ?? "dev-mfa-encryption-key";
-  return hashString(raw);
+  const raw = process.env.MFA_ENCRYPTION_KEY ?? process.env.AUTH_SECRET;
+  if (!raw) {
+    throw new Error("MFA_ENCRYPTION_KEY or AUTH_SECRET environment variable is required");
+  }
+  const keyBytes = createHash("sha256").update(raw, "utf8").digest();
+  return keyBytes.toString("base64");
 }
 
 export interface MFASetupResult {
@@ -30,6 +42,7 @@ export interface MFAChallenge {
 }
 
 export function createMFAService(): MFAService {
+  const mfaTrustSecret = getMFATrustSecret();
   const cache = createCacheClient();
 
   async function setupMFA(userId: string, email: string): Promise<MFASetupResult> {
@@ -80,19 +93,14 @@ export function createMFAService(): MFAService {
   }
 
   async function verifyAndConsumeRecoveryCode(userId: string, code: string): Promise<boolean> {
-    const user = await UserModel.findById(userId).select("recoveryCodes").lean();
-    if (!user?.recoveryCodes || user.recoveryCodes.length === 0) {
+    const hashed = createHash("sha256").update(code).digest("hex");
+    const result = await UserModel.updateOne(
+      { _id: userId, recoveryCodes: hashed },
+      { $pull: { recoveryCodes: hashed } },
+    );
+    if (result.modifiedCount === 0) {
       return false;
     }
-
-    const result = verifyRecoveryCode(code, user.recoveryCodes);
-    if (!result.valid) {
-      return false;
-    }
-
-    const codes = [...user.recoveryCodes];
-    codes.splice(result.index, 1);
-    await UserModel.findByIdAndUpdate(userId, { recoveryCodes: codes });
     logger.info({ userId }, "recovery code consumed");
     return true;
   }
@@ -144,7 +152,7 @@ export function createMFAService(): MFAService {
   function createTrustToken(userId: string): string {
     const expiry = Math.floor(Date.now() / 1000) + MFA_TRUST_TTL;
     const payload = `${userId}:${expiry}`;
-    const signature = hmac(payload, MFA_TRUST_SECRET);
+    const signature = hmac(payload, mfaTrustSecret);
     return `${payload}.${signature}`;
   }
 
@@ -154,7 +162,7 @@ export function createMFAService(): MFAService {
       if (parts.length !== 3) return false;
 
       const payload = `${parts[0]}:${parts[1]}`;
-      const expectedSignature = hmac(payload, MFA_TRUST_SECRET);
+      const expectedSignature = hmac(payload, mfaTrustSecret);
       if (parts[2] !== expectedSignature) return false;
 
       const expiryStr = parts[1];

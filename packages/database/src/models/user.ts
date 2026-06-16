@@ -1,6 +1,6 @@
 import { Schema, model, Model } from "mongoose";
 
-import { timestampsPlugin, toJSONTransform } from "../schema";
+import { timestampsPlugin, toJSONTransform, softDeletePlugin } from "../schema";
 
 export interface IUser {
   email: string;
@@ -41,6 +41,7 @@ userSchema.index({ isActive: 1, lastLoginAt: 1 }, { name: "idx_users_isActive_la
 userSchema.index({ emailVerified: 1, isActive: 1 }, { name: "idx_users_emailVerified_isActive" });
 
 timestampsPlugin(userSchema);
+softDeletePlugin(userSchema);
 toJSONTransform(userSchema);
 
 export const UserModel: Model<IUser> = model<IUser>("User", userSchema);

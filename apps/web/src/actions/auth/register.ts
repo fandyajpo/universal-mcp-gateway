@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { createAuthServer } from "@repo/auth";
+import { connect } from "@repo/database";
 import { registerSchema } from "@repo/validation";
 
 export interface RegisterActionResult {
@@ -32,11 +34,6 @@ export async function registerAction(
   }
 
   try {
-    const [{ connect }, { createAuthServer }] = await Promise.all([
-      import("@repo/database"),
-      import("@repo/auth"),
-    ]);
-
     await connect();
     const server = createAuthServer();
 

@@ -1,5 +1,7 @@
 "use server";
 
+import { createWorkspaceService, createRBACService } from "@repo/auth";
+import { connect, WorkspaceRepository, UserRepository } from "@repo/database";
 import { updateWorkspaceSchema } from "@repo/validation";
 
 export interface UpdateWorkspaceActionResult {
@@ -57,11 +59,6 @@ export async function updateWorkspaceAction(
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
 
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
-
     await connect();
 
     const workspaceRepo = new WorkspaceRepository(userId);
@@ -105,11 +102,6 @@ export async function updateSettingsAction(
     if (!userId) {
       return { success: false, error: "Unauthorized", code: "unauthorized" };
     }
-
-    const [
-      { connect, WorkspaceRepository, UserRepository },
-      { createWorkspaceService, createRBACService },
-    ] = await Promise.all([import("@repo/database"), import("@repo/auth")]);
 
     await connect();
 

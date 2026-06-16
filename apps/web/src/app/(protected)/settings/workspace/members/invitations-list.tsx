@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { cancelInvitationAction, resendInvitationAction } from "@/actions/workspace/members";
 import { Badge, Button } from "@/components/ui";
+import { useInvitations, useCancelInvitation, useResendInvitation } from "@/hooks/use-invitations";
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -13,79 +11,34 @@ const STATUS_BADGE: Record<string, string> = {
   expired: "bg-red-100 text-red-800",
 };
 
-interface Invitation {
-  _id: string;
-  id: string;
-  inviteeEmail: string;
-  role: string;
-  status: string;
-  message?: string;
-  createdAt: string;
-  expiresAt: string;
-  token: string;
-}
-
 interface InvitationsListProps {
   workspaceId: string;
   isAdmin: boolean;
 }
 
 export function InvitationsList({ workspaceId, isAdmin }: InvitationsListProps): React.ReactNode {
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: invitations, isLoading, error } = useInvitations(workspaceId);
+  const cancelMutation = useCancelInvitation(workspaceId);
+  const resendMutation = useResendInvitation(workspaceId);
 
-  async function fetchInvitations(): Promise<void> {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/workspaces/${workspaceId}/invitations?status=pending`);
-      const json = await res.json() as { data?: { invitations: Invitation[] }; error?: string };
-      if (json.data) {
-        setInvitations(json.data.invitations);
-      } else {
-        setError(json.error ?? "Failed to load");
-      }
-    } catch {
-      setError("Failed to load invitations");
-    } finally {
-      setLoading(false);
-    }
+  if (isLoading || !invitations || invitations.length === 0) return null;
+
+  if (error) {
+    return (
+      <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+        {error instanceof Error ? error.message : "Failed to load invitations"}
+      </div>
+    );
   }
-
-  useEffect(function (): void {
-    void fetchInvitations();
-  }, [workspaceId]);
-
-  async function handleCancel(invitationId: string): Promise<void> {
-    setError("");
-    const result = await cancelInvitationAction(invitationId, workspaceId);
-    if (result.success) {
-      setInvitations(function (prev): Invitation[] {
-        return prev.filter(function (i): boolean { return i.id !== invitationId && i._id !== invitationId; });
-      });
-    } else {
-      setError(result.error ?? "Failed to cancel");
-    }
-  }
-
-  async function handleResend(token: string): Promise<void> {
-    setError("");
-    const result = await resendInvitationAction(token, workspaceId);
-    if (!result.success) {
-      setError(result.error ?? "Failed to resend");
-    }
-  }
-
-  if (loading) return null;
-
-  if (invitations.length === 0) return null;
 
   return (
     <div className="rounded-lg border p-4">
       <h3 className="mb-3 text-sm font-medium">Pending Invitations</h3>
 
-      {error ? (
-        <div className="mb-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{error}</div>
+      {cancelMutation.error || resendMutation.error ? (
+        <div className="mb-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+          {cancelMutation.error?.message ?? resendMutation.error?.message}
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-2">
@@ -107,10 +60,17 @@ export function InvitationsList({ workspaceId, isAdmin }: InvitationsListProps):
 
               {isAdmin && inv.status === "pending" ? (
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={function (): void { void handleResend(inv.token); }}>
+                  <Button
+                    variant="outline" size="sm"
+                    disabled={resendMutation.isPending}
+                    onClick={function (): void { resendMutation.mutate(inv.token); }}
+                  >
                     Resend
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={function (): void { void handleCancel(inv._id); }}
+                  <Button
+                    variant="ghost" size="sm"
+                    disabled={cancelMutation.isPending}
+                    onClick={function (): void { cancelMutation.mutate(inv._id); }}
                     className="text-destructive hover:text-destructive"
                   >
                     Cancel

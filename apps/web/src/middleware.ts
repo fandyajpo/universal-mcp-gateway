@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { authenticated, session } = await validateSession(request);
 
   if (!authenticated) {
-    if (isApiRoute(pathname)) {
+    if (isApiRoute(pathname) && !isPublicRoute(pathname)) {
       return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: {

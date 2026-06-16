@@ -47,7 +47,15 @@ export const documentChunkSchema = z
   })
   .strip();
 
+export const pdfUploadResponseSchema = z
+  .object({
+    documentId: z.string().min(1),
+    status: z.literal("uploading"),
+  })
+  .strip();
+
 export type DocumentMetadataSchema = z.infer<typeof documentMetadataSchema>;
 export type DocumentSourceSchema = z.infer<typeof documentSourceSchema>;
 export type DocumentSchema = z.infer<typeof documentSchema>;
 export type DocumentChunkSchema = z.infer<typeof documentChunkSchema>;
+export type PdfUploadResponseSchema = z.infer<typeof pdfUploadResponseSchema>;

@@ -1,14 +1,61 @@
-export { RAGEngine } from "./engine";
-export type { RAGConfig, RAGContext, RAGOptions } from "./engine";
-export { Chunker } from "./chunker";
-export type { Chunk, ChunkStrategy, ChunkerConfig } from "./chunker";
-export { EmbeddingService } from "./embedding";
-export type { EmbeddingResult, EmbeddingOptions } from "./embedding";
-export { VectorStore } from "./vector-store";
-export type { VectorSearchResult, VectorSearchOptions, IndexConfig } from "./vector-store";
-export { Retriever } from "./retriever";
-export type { RetrievalResult, RetrievalOptions, HybridSearchConfig } from "./retriever";
-export { ReRanker } from "./re-ranker";
-export type { ReRankResult, ReRankConfig } from "./re-ranker";
-export { ContextBuilder } from "./context";
-export type { ContextConfig, ContextWindow } from "./context";
+// RAG Engine — exports added as modules are implemented
+// See Phase 08 for implementation
+
+export type { PdfUploadedEventPayload, PdfUploadedEvent } from "./pdf/types";
+export type {
+  PdfBoundingBox,
+  PdfFontInfo,
+  PdfExtractedLine,
+  PdfExtractedBlock,
+  PdfExtractedPage,
+  PdfExtractionMetadata,
+  PdfExtractionResult,
+} from "./pdf/types";
+export type {
+  PdfExtractStartedEventPayload,
+  PdfExtractStartedEvent,
+  PdfExtractCompletedEventPayload,
+  PdfExtractCompletedEvent,
+  PdfExtractFailedEventPayload,
+  PdfExtractFailedEvent,
+} from "./pdf/events";
+
+export { extractText } from "./pdf/extractor";
+export type { ExtractTextOptions } from "./pdf/extractor";
+export { runOcr, getPageSizes } from "./pdf/ocr";
+export type { RunOcrOptions, OcrPageRender } from "./pdf/ocr";
+export type { OcrWord, OcrLine, OcrBlock, OcrPage, OcrResult, OcrOptions } from "./pdf/ocr/types";
+export { PageRenderError } from "./pdf/ocr/renderer";
+export { chunkDocument } from "./pdf/chunker";
+export type { ChunkResult } from "./pdf/chunker";
+export type { Chunk, ChunkMetadata, ChunkStrategy, ChunkerOptions, ChunkDocumentOptions } from "./pdf/chunker/types";
+export type {
+  PdfChunkStartedEventPayload,
+  PdfChunkStartedEvent,
+  PdfChunkCompletedEventPayload,
+  PdfChunkCompletedEvent,
+  PdfChunkFailedEventPayload,
+  PdfChunkFailedEvent,
+} from "./pdf/events";
+export { extractMetadata } from "./pdf/metadata";
+export type { PdfMetadataResult, PdfInfoMetadata, PdfTocEntry, PdfPageDimension } from "./pdf/metadata/types";
+export { extractTables } from "./pdf/tables";
+export type { ExtractTablesOptions, ExtractTablesResult, PdfTable, PdfTableCell, PdfTableRow, PdfTableFormats } from "./pdf/tables/types";
+export {
+  createProgressTracker,
+  calculateProgress,
+  upsertStepMetric,
+  allStepsCompleted,
+  PIPELINE_STEPS,
+  STEP_WEIGHTS,
+  STEP_ORDER,
+} from "./pdf/progress";
+export type {
+  PipelineStep,
+  PdfStepStartedEvent,
+  PdfStepCompletedEvent,
+  PdfStepFailedEvent,
+  PdfProcessingCompletedEvent,
+  PdfProcessingFailedEvent,
+  PdfProgressEvent,
+} from "./pdf/progress";
