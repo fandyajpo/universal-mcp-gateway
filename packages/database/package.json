@@ -15,7 +15,7 @@
     "@repo/config": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/types": "workspace:*",
-    "mongoose": "^8.9.0"
+    "mongoose": "^9.7.0"
   },
   "devDependencies": {
     "@repo/config-eslint": "workspace:*",
