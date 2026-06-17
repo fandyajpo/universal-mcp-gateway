@@ -34,5 +34,41 @@ export const ragConfigSchema = z
   })
   .strip();
 
+const conversationMessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().min(1).max(100_000).trim(),
+  })
+  .strip();
+
+export const ragQueryOptionsSchema = z
+  .object({
+    strategy: z.enum(["vector", "hybrid"]).optional(),
+    rerank: z.boolean().optional(),
+    topK: z.number().int().min(1).max(100).optional(),
+    topN: z.number().int().min(1).max(50).optional(),
+    filters: z.record(z.string(), z.unknown()).optional(),
+    conversationHistory: z.array(conversationMessageSchema).max(100).optional(),
+    systemInstructions: z.string().max(10_000).trim().optional(),
+  })
+  .strip();
+
+export const ragQuerySchema = z
+  .object({
+    query: z.string().min(1).max(10_000).trim(),
+    workspaceId: z.string().min(1).max(128),
+    options: ragQueryOptionsSchema.optional(),
+  })
+  .strip();
+
+export const documentIdParamsSchema = z
+  .object({
+    documentId: z.string().min(1).max(128),
+  })
+  .strip();
+
 export type RAGResultSchema = z.infer<typeof ragResultSchema>;
 export type RAGConfigSchema = z.infer<typeof ragConfigSchema>;
+export type RAGQueryOptionsSchema = z.infer<typeof ragQueryOptionsSchema>;
+export type RAGQuerySchema = z.infer<typeof ragQuerySchema>;
+export type DocumentIdParamsSchema = z.infer<typeof documentIdParamsSchema>;

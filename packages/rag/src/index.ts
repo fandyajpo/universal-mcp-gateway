@@ -59,3 +59,62 @@ export type {
   PdfProcessingFailedEvent,
   PdfProgressEvent,
 } from "./pdf/progress";
+
+export { buildContext } from "./context/builder";
+export type {
+  RetrievalChunk,
+  ConversationMessage,
+  BudgetAllocation,
+  BuildContextOptions,
+  TruncationDetails,
+  ContextResult,
+} from "./context/types";
+export { countTokens, truncateToTokenLimit } from "./context/tokenizer";
+export {
+  formatChunk,
+  formatContextSection,
+  formatConversationSection,
+  formatInstructionsSection,
+} from "./context/formatter";
+export type { ChunkFormatOptions } from "./context/formatter";
+
+export { createRAGEngine } from "./engine";
+export type {
+  EngineOptions,
+  MiddlewareFn,
+  PipelineMetadata,
+  RAGResult,
+  RAGEngineDependencies,
+} from "./engine/types";
+export { queryNormalizer, noopMiddleware, composeMiddleware } from "./engine/middleware";
+
+// Eval
+export { EvalRunner } from "./eval/runner";
+export {
+  validateDataset,
+  loadDataset,
+  createDataset,
+  computePerQueryMetrics,
+  computeAggregatedMetrics,
+  computeDCG,
+  computeIDCG,
+  formatMetricTable,
+  formatSummary,
+  formatEvalReport,
+  formatJSON,
+  saveResult,
+  loadResult,
+  EvaluationError,
+  loadSampleDataset,
+  DEFAULT_EVAL_CONFIG,
+  EVAL_METRIC_KS,
+} from "./eval";
+export type {
+  EvalQuery,
+  EvalDataset,
+  EvalConfig,
+  PerQueryMetrics,
+  AggregatedMetrics,
+  EvalSummary,
+  EvalResult,
+} from "./eval/types";

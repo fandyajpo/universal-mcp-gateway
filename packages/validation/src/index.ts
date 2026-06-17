@@ -81,6 +81,9 @@ export {
   ragConfigSchema,
   retrievalStrategySchema,
   chunkStrategySchema,
+  ragQuerySchema,
+  ragQueryOptionsSchema,
+  documentIdParamsSchema,
 } from "./schemas/rag";
 
 // Storage schemas
@@ -178,6 +181,9 @@ export type {
 export type {
   RAGResultSchema,
   RAGConfigSchema,
+  RAGQuerySchema,
+  RAGQueryOptionsSchema,
+  DocumentIdParamsSchema,
 } from "./schemas/rag";
 export type {
   MCPToolSchema,

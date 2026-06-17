@@ -7,18 +7,19 @@
 | Category | Count | Progress |
 |---|---|---|---|---|
 | Phases Total | 19 (00-18) | 5 completed |
-| Steps Total | ~220 | 83 completed |
+| Steps Total | ~220 | 86 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
 ## Current Phase
 
 **Phase 5: Storage** — Complete.
-**Phase 6: PDF Processing** — In Progress (Steps 06.01-06.08 complete).
+**Phase 6: PDF Processing** — Complete (Steps 06.01-06.08).
+**Phase 8: RAG Engine** — In Progress (Steps 08.06-08.09 complete).
 
 ## Current Step
 
-**Step 06.08** — PDF Processing UI — Complete. Built drag-and-drop upload zone, document list with status badges, processing progress indicator, document detail page with metadata/extraction info, retry/delete actions, search/filter, polling for in-progress documents.
+**Step 08.09** — Retrieval Evaluation — Complete. Built evaluation framework with `EvalRunner` (runs RAGEngine against datasets), 5 metrics (hit rate, MRR, NDCG, precision, recall) computed at K=1,3,5,10,20, `PerQueryMetrics` tracking retrieved vs relevant results, `AggregatedMetrics` with mean-of-means across all queries, sample dataset with 20 synthetic queries, formatted report output, and `pnpm --filter @repo/rag eval` CLI entry point.
 
 ## Completed
 
@@ -678,7 +679,44 @@
   - Lint clean, typecheck clean, build succeeds (routes listed: /documents, /documents/[id])
 - AI Gateway
 - MCP Gateway
-- RAG Engine
+- [x] Phase 08 Step 08.06: Context Window Builder:
+  - `packages/rag/src/context/types.ts` — Context types: RetrievalChunk, ConversationMessage, BudgetAllocation, BuildContextOptions, TruncationDetails, ContextResult
+  - `packages/rag/src/context/tokenizer.ts` — Token counting wrapper using gpt-tokenizer: countTokens(), truncateToTokenLimit()
+  - `packages/rag/src/context/formatter.ts` — Chunk and context formatting: formatChunk() with citation markers, formatContextSection(), formatConversationSection(), formatInstructionsSection()
+  - `packages/rag/src/context/builder.ts` — `buildContext()` with token budget allocation (70/15/15), chunk sorting by score for truncation, conversation history handling with sliding window, guaranteed instructions allocation, truncation metadata
+  - `packages/rag/src/index.ts` — Exports buildContext, all context types, tokenizer, and formatter utilities
+  - Lint clean, typecheck clean
+- [x] Phase 08 Step 08.07: RAG Engine Composition:
+  - `packages/rag/src/engine/types.ts` — Engine types: EngineOptions, PipelineContext, PipelineStep, MiddlewareFn, EmbeddingResult, StepMetadata, PipelineMetadata, RAGResult, RAGEngineDependencies
+  - `packages/rag/src/engine/tracer.ts` — Pipeline tracer: createTracer() with per-step timing, success/failure logging, aggregate metadata
+  - `packages/rag/src/engine/pipeline.ts` — Pipeline orchestrator: executeSteps() with sequential step execution, critical/non-critical error handling
+  - `packages/rag/src/engine/middleware.ts` — Query preprocessing: queryNormalizer() stripping HTML/URLs, noopMiddleware(), composeMiddleware()
+  - `packages/rag/src/engine.ts` — RAG Engine factory: createRAGEngine() with injectable services (embedText, retrieve, rerank), dynamic step assembly, pipeline context initialization, RAGResult assembly
+  - `packages/rag/src/index.ts` — Exports createRAGEngine, EngineOptions, MiddlewareFn, PipelineMetadata, RAGResult, RAGEngineDependencies, middleware utilities
+  - Lint clean, typecheck clean
+- [x] Phase 08 Step 08.08: RAG API Routes:
+  - `packages/validation/src/schemas/rag.ts` — Added ragQuerySchema, ragQueryOptionsSchema, documentIdParamsSchema with Zod validation
+  - `packages/validation/src/index.ts` — Exports new RAG API schemas and types
+  - `apps/web/src/app/api/rag/schema.ts` — Shared error utilities: unauthorized(), forbidden(), badRequest(), notFound(), rateLimited(), serverError(), getAuthHeaders()
+  - `apps/web/src/app/api/rag/query/route.ts` — POST /api/rag/query with Zod body validation, auth via session headers, workspace membership check, engine integration
+  - `apps/web/src/app/api/rag/status/[documentId]/route.ts` — GET /api/rag/status/:documentId with document ID validation
+  - `apps/web/src/app/api/rag/reindex/[documentId]/route.ts` — POST /api/rag/reindex/:documentId trigger re-indexing
+  - `apps/web/src/app/api/rag/index/[documentId]/route.ts` — DELETE /api/rag/index/:documentId remove document chunks
+  - Lint clean, typecheck clean
+- [x] Phase 08 Step 08.09: Retrieval Evaluation:
+  - `packages/rag/src/eval/types.ts` — Dataset types (EvalQuery, EvalDataset, EvalConfig), metric types (PerQueryMetrics, AggregatedMetrics), result types (EvalResult, EvalSummary)
+  - `packages/rag/src/eval/errors.ts` — EvaluationError typed class with code + details
+  - `packages/rag/src/eval/dataset.ts` — validateDataset() with field checks + duplicate detection, loadDataset(), createDataset() helper
+  - `packages/rag/src/eval/metrics.ts` — computePerQueryMetrics() (hitAtK, reciprocal rank), computeDCG/IDCG, computeAggregatedMetrics() (hitRate, MRR, NDCG, precision, recall at configurable K values)
+  - `packages/rag/src/eval/runner.ts` — EvalRunner class with injected RAGEngineDependencies, per-query execution with graceful error fallback, aggregated metric computation
+  - `packages/rag/src/eval/report.ts` — Formatting: formatMetricTable() (markdown table), formatSummary(), formatEvalReport() (full report with per-query details)
+  - `packages/rag/src/eval/fixtures/sample.ts` — 20 synthetic queries covering MCP, vector search, hybrid search, re-ranker, chunking, context window, Atlas, pipeline, embeddings, tenant isolation, PDF processing, caching, normalization, filtering, API routes, error handling with relevantChunkIds
+  - `packages/rag/src/eval/index.ts` — Barrel exports
+  - `packages/rag/src/index.ts` — Exports EvalRunner, all eval functions + types
+  - `packages/rag/package.json` — Added "eval": "tsx ../../scripts/run-eval.ts" script
+  - `scripts/run-eval.ts` — CLI entry point running 3 configs (vector-only, hybrid, hybrid+rerank) against sample dataset
+  - Lint clean, typecheck clean
+- RAG Engine (Step 08.01-08.05 pending embedding pipeline)
 - Connector SDK and implementations
 - Chat UI
 - Admin dashboard
@@ -729,4 +767,4 @@ None detected.
 
 ## Last Updated
 
-2026-06-16 (Phase 06 Step 06.07 complete)
+2026-06-17 (Phase 08 Step 08.09 complete)

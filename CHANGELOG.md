@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Retrieval evaluation framework (`@repo/rag`):
+  - `EvalRunner` class with dependency-injected RAGEngine for automated evaluation against datasets
+  - 5 metrics computed at K=1,3,5,10,20: hit rate, Mean Reciprocal Rank (MRR), Normalized DCG (NDCG), precision, recall
+  - `PerQueryMetrics` tracking retrieved vs relevant chunk IDs, hit-at-K flags, reciprocal rank
+  - `AggregatedMetrics` with mean-of-means aggregation across all queries, average relevant rank
+  - Dataset types: `EvalQuery` (id, query, relevantChunkIds), `EvalDataset`, `EvalConfig`
+  - `validateDataset()` with field checks, duplicate detection, and zero-tolerance for invalid entries
+  - `computeDCG()` / `computeIDCG()` for per-query NDCG calculation with binary relevance
+  - `formatMetricTable()` producing markdown tables for console/CI output
+  - Sample dataset (`fixtures/sample.ts`) with 20 synthetic queries covering all RAG features
+  - `EvaluationError` typed class with code + details for structured error handling
+  - `scripts/run-eval.ts` CLI entry point running 3 config variants (vector-only, hybrid, hybrid+rerank)
+  - `pnpm --filter @repo/rag eval` script registered in `package.json`
+
+- RAG API routes (`@repo/web`):
+  - `POST /api/rag/query` — RAG query endpoint with Zod validation, auth via session headers, workspace membership check
+  - `GET /api/rag/status/:documentId` — document indexing status check
+  - `POST /api/rag/reindex/:documentId` — trigger document re-indexing
+  - `DELETE /api/rag/index/:documentId` — delete document index (chunks)
+  - Shared error utility functions: `unauthorized()`, `forbidden()`, `badRequest()`, `notFound()`, `rateLimited()`, `serverError()`
+  - Zod schemas: `ragQuerySchema`, `ragQueryOptionsSchema`, `documentIdParamsSchema` in `@repo/validation`
+
+- RAG Engine composition (`@repo/rag`):
+  - `createRAGEngine(deps)` factory with injectable services (embedText, retrieve, rerank)
+  - Pipeline orchestration: embedding → retrieval → re-ranking → context builder
+  - `PipelineStep<I, O>` interface with `name`, `required`, `execute()` for composable pipeline steps
+  - Error recovery: critical steps (embedding, retrieval) fail the pipeline; non-critical (reranker) degrades gracefully
+  - Pipeline tracing via `createTracer()` with per-step duration, success/failure logging, aggregate metadata
+  - Query normalization middleware stripping HTML tags and URLs before embedding
+  - `RAGResult` output with assembled context, retrieved chunks, token count, and pipeline metadata
+
+- Context window builder (`@repo/rag`):
+  - `buildContext()` with token budget allocation (context 70%, instructions 15%, history 15%)
+  - Chunk formatting with sequential citation markers `[1]`, `[2]`, etc., source document title, section path, page number
+  - Conversation history handling with oldest-first truncation and sliding window summarization
+  - Overflow truncation: lowest-score chunks removed first, then oldest history messages
+  - Guaranteed system instructions allocation (never truncated)
+  - Structured context output with section separators (`<context>`, `<conversation_history>`, `<instructions>`)
+  - `TruncationDetails` metadata reporting what was removed and why
+  - Token counting via `gpt-tokenizer` with `countTokens()` and `truncateToTokenLimit()` utilities
+  - Context assembly time < 100ms for up to 20 chunks
+
 - PDF progress tracking via Inngest event-driven pipeline:
   - Typed Inngest events for all 6 pipeline steps: `pdf/{step}/started`, `pdf/{step}/completed`, `pdf/{step}/failed`
   - Step lifecycle events: `uploaded`, `extract`, `ocr`, `chunk`, `embed`, `index`

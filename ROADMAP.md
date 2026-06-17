@@ -144,7 +144,7 @@ Build the document ingestion pipeline: upload, extract, structure, and index PDF
 - [x] Build PDF processing UI with drag-and-drop upload, document list, and detail views
 - [ ] Build processing error handling with retry logic and dead-letter queue
 - [ ] Implement PDF-to-text quality metrics (character confidence, extraction rate)
-- [ ] Add support for password-protected PDFs with user-provided credentials
+- [ ] Add support for password-protected PDFs with user-provided credentials (upload field created, core logic pending)
 - [ ] Build processing dashboard showing queue depth, success rates, and failures
 
 ---
@@ -175,9 +175,9 @@ Build the retrieval-augmented generation engine with hybrid search, re-ranking, 
 - [ ] Create MongoDB Atlas Vector Search index with appropriate dimensions and similarity metric
 - [ ] Implement hybrid search combining vector similarity and full-text keyword search
 - [ ] Build re-ranking service using Cohere or BGE cross-encoder model
-- [ ] Implement context window management with dynamic truncation and sliding window
+- [x] Implement context window management with dynamic truncation and sliding window
 - [ ] Build citation tracking with source document, page number, and text excerpt
-- [ ] Implement retrieval evaluation pipeline (hit rate, MRR, NDCG)
+- [x] Implement retrieval evaluation pipeline (hit rate, MRR, NDCG)
 - [ ] Build query expansion using LLM-generated paraphrases
 - [ ] Implement metadata filtering for workspace-scoped and document-scoped retrieval
 - [ ] Add document-level access control enforcement in retrieval queries
