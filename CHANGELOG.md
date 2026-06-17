@@ -9,6 +9,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Phase 10 Step 10.01: MCP Protocol Handler (`@repo/mcp`):
+  - 8 new source files: types, protocol (handler, json-rpc, methods, errors), transports (interface, SSE, stdio)
+  - JSON-RPC 2.0 parser/validator with full error code support (-32700, -32600, -32601, -32602, -32603)
+  - Method registry for handler routing (initialize, ping, tools/list, tools/call, notifications)
+  - Protocol handler with initialization handshake enforcement, cancellation support, batch requests
+  - Transport abstraction interface with SSE (HTTP server) and stdio (subprocess) implementations
+  - SSE transport: `/mcp/sse` endpoint for outgoing events, `/mcp` POST for incoming messages
+  - Stdio transport: readline from stdin, line-delimited JSON to stdout
+  - All exports via `@repo/mcp` barrel
+
+- Phase 09 Step 09.10: AI Gateway Verification (`@repo/ai`, `apps/web`):
+  - 10 test files with 70 tests covering all 9 AI Gateway components (09.01-09.09):
+    - OpenRouter client (6 tests): chat completion, streaming, embedding, model listing, error classification, retry logic
+    - Provider abstraction (5 tests): provider interface, adapter methods, error mapping
+    - Model router (10 tests): route selection, tier restrictions, health-aware routing, cost limits, preferred model, Redis persistence
+    - Streaming support (7 tests): token events, callbacks, abort, SSE formatting, ReadableStream conversion
+    - Fallback & circuit breaker (5 tests): fallback depth, model exhaustion, circuit breaker skip, embedding fallback
+    - Cost tracker (8 tests): record storage, batch flushing, pricing lookup, cost calculation with cached token discount
+    - Rate limiter (3 tests): default config, configuration override, token bucket consumption
+    - Prompt template system (19 tests): rendering, conditionals, iteration, nested templates, versioning, validation, token estimation
+    - E2E (3 tests): chat completion, streaming, router+fallback (skipped without OPENROUTER_API_KEY)
+    - Performance benchmarks (4 tests): burst rate limiting, CJK token estimation, circuit breaker tracking
+  - Fixed `{{#if}}`/`{{/if}}` and `{{#each}}`/`{{/each}}` offset bug in prompt/engine.ts (off-by-one consumed next char)
+  - Test infrastructure: `vitest.config.ts`, `tsconfig.json` exclusion, `vitest` devDependency
+  - All tests pass with mocked `@repo/cache` and `@repo/logger` dependencies
+  - Phase 09 marked complete
+
+- Phase 09 Step 09.07: Rate Limiter (`@repo/ai`):
+  - Token bucket algorithm with Lua script (`TOKEN_BUCKET_SCRIPT`) for atomic refill + consume in Redis
+  - Three-tier rate limiting (global/workspace/user) with configurable capacities and refill rates (defaults: 100/50/10 req/min)
+  - `createRateLimiter()` factory with checkLimit() (parallel three-tier check), consume(), resetLimit(), updateConfig(), getConfig()
+  - Bypass flag for internal/admin requests — returns fake unlimited result
+  - Config persistence to Redis key `ratelimit:ai:config` with 5min TTL
+  - Dynamic `@repo/cache` import for Redis client (no circular dependency)
+  - Fail-open on Redis errors — rate limiting never blocks API calls
+  - Barrel exports in `packages/ai/src/index.ts`
+
+- Phase 09 Step 09.09: AI Gateway API Routes (`apps/web` + `@repo/validation`):
+  - `POST /api/ai/chat` — non-streaming chat completion with model routing and fallback chain
+  - `POST /api/ai/chat/stream` — SSE streaming chat via `createStream` + `formatEventStream`
+  - `POST /api/ai/embed` — text embedding with model routing fallback
+  - `GET /api/ai/models` — model listing from OpenRouter API
+  - `apps/web/src/app/api/ai/schema.ts` — Zod request/response schemas (chatRequestSchema, embedRequestSchema)
+  - `apps/web/src/app/api/ai/middleware.ts` — auth context extraction, error response helpers
+  - `packages/validation/src/schemas/ai.ts` — shared AI API validation schemas
+
+- Phase 09 Step 09.08: Prompt Template System (`@repo/ai`):
+  - Custom template engine: segment-based parser + renderer supporting `{{var}}`, `{{var:default}}`, `{{#if}}`/`{{/if}}`, `{{#each}}`/`{{/each}}`, and `{{> nestedTemplate}}`
+  - Template registry (`createPromptRegistry`) with versioning (integer versions, latest-by-default), built-in templates (system/default, system/rag, system/tools, user/query), template composition via `{{> name}}`
+  - `render(templateName, variables)`, `renderMessages(templateName, variables)` for system/user message construction, `validate()`, `estimateTokens()` with CJK/code-aware heuristics
+  - Compiled template caching — templates parsed once, render function cached in memory
+  - Required variable validation throws clear error; optional strict mode warns on unused variables
+  - Token estimation: CJK ×1.5, code blocks ÷3, plain text ÷4 — sync, < 2ms
+  - All types exported via `@repo/ai` barrel
+
+- Phase 09 Step 09.06: Cost Tracker (`@repo/ai` + `@repo/database`):
+  - Mongoose schema (`AiCostModel`) with workspaceId, userId, requestId, model, provider, taskType, prompt/completion/totalTokens, cachedTokens (50% discount), cost, currency, timestamp, metadata. Indexes on workspaceId+timeramp, model+timestamp, userId+timestamp. TTL index: 365 days.
+  - Cost tracker service (`createCostTracker`) in `@repo/ai` with batch buffer (flush every 10s or 100 records), fire-and-forget writes, graceful shutdown via `shutdown()`
+  - Pricing lookup (`getPricing`) from model registry with `calculateCost()` (per-token * price / 1M) and cached-token 50% discount. Estimation fallback (chars/4 heuristic) when usage data missing
+  - Aggregation queries (`CostAggregationService`): getWorkspaceCost, getModelCostBreakdown, getUserCost, getDailyCostTrend via MongoDB aggregation pipelines
+  - Provider decorator (`withCostTracking`) wrapping chatCompletion, chatCompletionStream (records after stream completes), and embed — non-blocking cost recording
+  - Database services: `insertCostRecords()` and `runCostAggregation()` in `@repo/database` for decoupled MongoDB access
+  - Barrel exports in both `@repo/ai` and `@repo/database`
+
+- Phase 09 Step 09.05: Fallback & Circuit Breaker (`@repo/ai`):
+  - Provider failover chain: configurable fallback model list per task type (chat/embedding), retryable error detection (ProviderError.retryable flag), circuit breaker check before each attempt
+  - Redis-backed circuit breaker: 3 consecutive failures in 5-min window → OPEN state, exponential backoff (60s–600s), HALF_OPEN probe on cooldown expiry, reset on success
+  - State machine: CLOSED → failures → OPEN → backoff → HALF_OPEN → success → CLOSED, or failure → OPEN with 2x backoff
+  - Router health integration: setHealth("down") on circuit open, "degraded" on failure, "healthy" on success
+  - getHealthWithCircuit() async helper combining in-memory health + circuit breaker state for routing decisions
+  - Circuit breaker keys: `circuit:{workspaceId}:{modelId}` with 600s TTL via `@repo/cache`
+  - Fallback chain resets on non-retryable errors (auth, bad request) — marks model down immediately
+  - Barrel exports: createFallbackChain, FallbackChain/FallbackChainOptions/FallbackChainResult types, circuit breaker functions (getCircuitState, recordFailure, recordSuccess, resetCircuit)
+
+- Phase 09 Step 09.04: Streaming support (`@repo/ai`):
+  - Stream manager: `createStream(provider, request, options)` with typed AsyncGenerator event stream
+  - 7 StreamEvent types: token, tool_call_start, tool_call_delta, tool_call_complete, citations, finish, error
+  - Tool call accumulation from streaming deltas via `ToolCallAccumulator`
+  - Backpressure controller: high-watermark 50, low-watermark 20, max 100 chunks
+  - SSE formatting helpers: `formatStreamEvent()` + `formatEventStream()` (ReadableStream)
+  - AbortController-based cancellation with signal threading through Provider → OpenRouter → fetch
+  - 60-second idle timeout, onToken/onToolCall/onFinish callbacks
+  - Provider.chatCompletionStream accepts optional AbortSignal for provider-level abort
+  - StreamChunk delta extended with toolCalls field for streaming tool call detection
+  - OpenRouter StreamDelta extended with tool_calls field
+
+- Phase 09 Step 09.03: Model router (`@repo/ai`):
+  - Model registry with 6 pre-populated models and their capabilities, pricing, and tier access
+  - `route()` function implementing priority chain: task capability → tier restrictions → capability matching → cost limit → health filter → cost optimization
+  - Tier enforcement: free (only cheap models), pro ($0.01 max), enterprise (unlimited)
+  - Health-aware selection: skips `down` models, prefers `healthy` over `degraded`
+  - Preferred model override with fallback to cheapest capable
+  - Redis-backed registry caching (`model:registry`, 5-minute TTL)
+  - All routing decisions logged with alternatives considered
+  - Routing latency: < 10ms (pure in-memory, no API calls)
+  - Types: RouteRequest, RouteResult, ModelRegistryEntry, TaskType, HealthStatus, TierConfig
+
+- Phase 09 Step 09.02: Provider abstraction layer (`@repo/ai`):
+  - `Provider` interface with 4 methods: `chatCompletion`, `chatCompletionStream`, `embed`, `listModels`
+  - Unified cross-provider types: `ChatRequest`/`ChatResponse`, `StreamChunk`, `EmbedRequest`/`EmbedResponse`, `Model`, `ProviderCapability`, `ProviderConfig`
+  - Provider error hierarchy: `ProviderError`, `CapabilityError`, `ProviderConfigurationError`, `ProviderNotFoundError` with `mapProviderError()` factory
+  - `createOpenRouterProvider()` adapter — wraps `OpenRouterClient` behind `Provider` interface, converts snake_case OpenRouter types to camelCase unified types
+  - `createProvider()` factory and `createProviderFromConfig()` convenience function
+  - Updated barrel exports in `packages/ai/src/index.ts`
+  - Lint and typecheck clean
+
+- Phase 09 Step 09.01: OpenRouter client (`@repo/ai`):
+  - `createOpenRouterClient()` factory with 4 methods: `chatCompletion`, `chatCompletionStream` (SSE AsyncGenerator), `embed`, `listModels`
+  - Typed request/response types: ChatCompletionRequest, StreamChunk, EmbeddingRequest, ModelInfo, OpenRouterConfig
+  - Error classification hierarchy: RateLimitError, TimeoutError, AuthError, ServerError, InvalidRequestError with `classifyError()` factory
+  - Selective retry logic: `withRetry()` with exponential backoff (1s, 2s, 4s + jitter), AbortController timeout, retry only on 429/503/5xx
+  - Injectable `fetch` function for testability, configurable `HTTP-Referer`/`X-Title` headers, API key from `OPENROUTER_API_KEY` env var
+  - All API calls logged via `@repo/logger` with model, token count, latency
+  - Provider type definitions (AIProvider, ProviderConfig, ProviderType) for future abstraction layer
+  - `packages/ai/eslint.config.js` added, `@repo/utils` and `@repo/config-eslint` dependencies added
+
 - Retrieval evaluation framework (`@repo/rag`):
   - `EvalRunner` class with dependency-injected RAGEngine for automated evaluation against datasets
   - 5 metrics computed at K=1,3,5,10,20: hit rate, Mean Reciprocal Rank (MRR), Normalized DCG (NDCG), precision, recall

@@ -447,13 +447,22 @@ importers:
       '@repo/types':
         specifier: workspace:*
         version: link:../types
+      '@repo/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@repo/config-eslint':
+        specifier: workspace:*
+        version: link:../config/eslint
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+      vitest:
+        specifier: ^3.1.0
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.20)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/auth:
     dependencies:
@@ -722,6 +731,9 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@repo/config-eslint':
+        specifier: workspace:*
+        version: link:../config/eslint
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

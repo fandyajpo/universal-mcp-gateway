@@ -8,15 +8,19 @@
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@repo/cache": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/types": "workspace:*",
+    "@repo/utils": "workspace:*",
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "@repo/config-eslint": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
   }
 }

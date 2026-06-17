@@ -6,8 +6,8 @@
 
 | Category | Count | Progress |
 |---|---|---|---|---|
-| Phases Total | 19 (00-18) | 5 completed |
-| Steps Total | ~220 | 86 completed |
+| Phases Total | 19 (00-18) | 6 completed |
+| Steps Total | ~220 | 98 completed |
 | Packages | 15 | 12 implemented |
 | Apps | 4 | 4 scaffolded |
 
@@ -16,10 +16,12 @@
 **Phase 5: Storage** — Complete.
 **Phase 6: PDF Processing** — Complete (Steps 06.01-06.08).
 **Phase 8: RAG Engine** — In Progress (Steps 08.06-08.09 complete).
+**Phase 9: AI Gateway** — Complete (Steps 09.01-09.10 complete).
+**Phase 10: MCP Gateway** — In Progress (Step 10.01 complete).
 
 ## Current Step
 
-**Step 08.09** — Retrieval Evaluation — Complete. Built evaluation framework with `EvalRunner` (runs RAGEngine against datasets), 5 metrics (hit rate, MRR, NDCG, precision, recall) computed at K=1,3,5,10,20, `PerQueryMetrics` tracking retrieved vs relevant results, `AggregatedMetrics` with mean-of-means across all queries, sample dataset with 20 synthetic queries, formatted report output, and `pnpm --filter @repo/rag eval` CLI entry point.
+**Step 10.01** — MCP Protocol Handler. Complete. 8 files created, JSON-RPC 2.0 parser/validator, method registry, protocol handler, Transport interface, SSE and stdio transports. Typecheck and lint clean.
 
 ## Completed
 
@@ -716,6 +718,91 @@
   - `packages/rag/package.json` — Added "eval": "tsx ../../scripts/run-eval.ts" script
   - `scripts/run-eval.ts` — CLI entry point running 3 configs (vector-only, hybrid, hybrid+rerank) against sample dataset
   - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.01: OpenRouter Client:
+  - `packages/ai/src/providers/types.ts` — Provider type definitions (AIProvider, ProviderConfig, ProviderType)
+  - `packages/ai/src/providers/openrouter/types.ts` — Complete OpenRouter API types: ChatCompletionRequest/Response, StreamChunk, EmbeddingRequest/Response, ModelInfo, OpenRouterConfig
+  - `packages/ai/src/providers/openrouter/errors.ts` — Error classification: OpenRouterError hierarchy (RateLimitError, TimeoutError, AuthError, ServerError, InvalidRequestError), classifyError() factory, isRetryableError()
+  - `packages/ai/src/providers/openrouter/retry.ts` — Selective retry logic: withRetry() with exponential backoff (1s, 2s, 4s), jitter, AbortController-based timeout per request type, retry-only on 429/503/5xx
+  - `packages/ai/src/providers/openrouter.ts` — OpenRouter HTTP client: createOpenRouterClient() factory with chatCompletion(), chatCompletionStream() (AsyncGenerator SSE), embed(), listModels(), injectable fetch, configurable headers (HTTP-Referer, X-Title), API key from env, typed method returns
+  - `packages/ai/src/index.ts` — Barrel exports: createOpenRouterClient, OpenRouterClient, all types, OpenRouterError
+  - `packages/ai/eslint.config.js` — Added missing lint config
+  - `packages/ai/package.json` — Added @repo/utils and @repo/config-eslint dependencies
+  - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.02: Provider Abstraction Layer:
+  - `packages/ai/src/providers/provider.ts` — `Provider` interface with 4 methods (chatCompletion, chatCompletionStream, embed, listModels), capabilities, and metadata
+  - `packages/ai/src/providers/types.ts` — Unified cross-provider types: ChatRequest/Response, StreamChunk, EmbedRequest/Response, Model, ProviderCapability, ProviderConfig, ProviderMetadata
+  - `packages/ai/src/providers/errors.ts` — ProviderError hierarchy (CapabilityError, ProviderConfigurationError, ProviderNotFoundError), mapProviderError() factory
+  - `packages/ai/src/providers/openrouter.ts` — Added createOpenRouterProvider() adapter wrapping OpenRouterClient behind Provider interface, type conversion layer (snake_case → camelCase)
+  - `packages/ai/src/providers/factory.ts` — createProvider() factory and createProviderFromConfig() convenience function
+  - `packages/ai/src/index.ts` — Updated barrel exports for all new modules
+  - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.03: Model Router:
+  - `packages/ai/src/router/types.ts` — Router types: RouteRequest, RouteResult, ModelRegistryEntry, TaskType, HealthStatus, TierConfig
+  - `packages/ai/src/router/tiers.ts` — Tier restrictions: free (gpt-4o-mini, claude-haiku-3.5), pro (up to $0.01), enterprise (unlimited)
+  - `packages/ai/src/router/health.ts` — In-memory health tracker with per-model health status (healthy/degraded/down)
+  - `packages/ai/src/router/registry.ts` — Model registry with 6 pre-populated models (gpt-4o, gpt-4o-mini, claude-sonnet-4, claude-haiku-3.5, gemini-2.0-flash, text-embedding-3-large), Redis caching (load/save), health updates
+  - `packages/ai/src/router.ts` — createRouter() factory with route() function implementing priority chain: task capability → tier restrictions → capability matching → cost limit → health filter → cost optimization with healthy preference
+  - Routing: < 10ms (pure in-memory, no API calls during routing), all decisions logged
+  - Preferred model override, alternatives considered in reasoning
+  - Redis cache key: `model:registry` with 5-minute TTL
+  - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.04: Streaming Support:
+  - `packages/ai/src/stream/types.ts` — StreamEvent union type (token, tool_call_start/delta/complete, citations, finish, error), StreamHandle, StreamOptions
+  - `packages/ai/src/stream/accumulator.ts` — ToolCallAccumulator: merges streaming delta tool call arguments until JSON-parsable complete form
+  - `packages/ai/src/stream/backpressure.ts` — BackpressureController: high-watermark (50) pause, low-watermark (20) resume, max 100 chunks
+  - `packages/ai/src/stream/sse.ts` — formatStreamEvent() for SSE data formatting, formatEventStream() for ReadableStream creation
+  - `packages/ai/src/stream.ts` — createStream(provider, request, options) with AsyncGenerator event stream, AbortController-based cancellation, 60s timeout, backpressure-aware chunk consumption, tool call detection and accumulation, onToken/onToolCall/onFinish callbacks
+  - Abort signal threading through Provider.chatCompletionStream → OpenRouterProvider → OpenRouterClient → fetch for provider-level cancellation
+  - SSE format: `data: {json}\n\n` for each StreamEvent
+  - Provider interface updated: chatCompletionStream accepts optional AbortSignal
+  - StreamChunk type updated: delta.toolCalls field for streaming tool call detection
+  - OpenRouter types updated: StreamDelta.tool_calls field
+  - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.05: Fallback & Circuit Breaker:
+  - `packages/ai/src/fallback/types.ts` — FallbackConfig (chat/embedding model lists), FallbackResult, CircuitBreakerState, CircuitState types
+  - `packages/ai/src/fallback/circuit-breaker.ts` — Redis-backed state machine: 3 failures/5min → OPEN, exponential backoff (60s–600s), HALF_OPEN probe, auto-reset on success
+  - `packages/ai/src/fallback.ts` — createFallbackChain() factory with execute() for typed task execution, retryable error detection (ProviderError.retryable), async circuit breaker check per model, router health integration (setHealth down/degraded/healthy)
+  - `packages/ai/src/providers/errors.ts` — ProviderError extended with retryable flag, mapProviderError() sets retryable=true for RateLimitError/ServerError/TimeoutError
+  - `packages/ai/src/router/health.ts` — Added getHealthWithCircuit() async helper combining in-memory health + circuit breaker state
+  - `packages/ai/src/index.ts` — Barrel exports for fallback chain, circuit breaker functions, and types
+  - Circuit breaker states: CLOSED → 3 consecutive failures → OPEN → 60s–600s backoff → HALF_OPEN → 1 success → CLOSED, or failure → OPEN with 2x backoff
+  - Fallback chain retries: only on retryable errors (timeout, rate limit, server error); non-retryable (auth, bad request) immediately mark model down
+  - Redis keys: `circuit:{workspaceId}:{modelId}` with 600s TTL
+  - Lint clean, typecheck clean
+- [x] Phase 09 Step 09.06: Cost Tracker:
+  - `packages/database/src/models/ai-cost.ts` — Mongoose schema with workspaceId, userId, model, provider, taskType, token counts, cachedTokens, cost, currency, timestamp, metadata (streamed, cached, fallbackDepth). Indexes: workspaceId+timestamp, model+timestamp, userId+timestamp, TTL (365 days)
+  - `packages/ai/src/cost/types.ts` — AiCostRecordInput, AiCostRecord, PricingEntry, CostBreakdown, DailyCostPoint types
+  - `packages/ai/src/cost/pricing.ts` — getPricing(model) for model price lookup from registry, calculateCost() with cached-token 50% discount, estimateCost() fallback (chars/4 heuristic)
+  - `packages/ai/src/cost/aggregation.ts` — CostAggregationService interface + createCostAggregationService(query) factory with 4 aggregation methods: getWorkspaceCost, getModelCostBreakdown, getUserCost, getDailyCostTrend
+  - `packages/ai/src/cost.ts` — createCostTracker(storage) with batch buffer (10s/100 records), CostStorage interface, computeCost()/toCostRecord() helpers, graceful shutdown
+  - `packages/ai/src/providers/provider.ts` — withCostTracking() decorator wrapping Provider methods (chatCompletion, chatCompletionStream, embed) with cost recording callbacks
+  - `packages/database/src/services/cost-storage.ts` — insertCostRecords() using AiCostModel.insertMany
+  - `packages/database/src/services/cost-aggregation.ts` — runCostAggregation() delegating to AiCostModel.aggregate
+  - Both barrels updated; lint + typecheck clean
+- [x] Phase 09 Step 09.07: Rate Limiter:
+  - `packages/ai/src/rate-limiter/types.ts` — RateLimitConfig (global/workspace/user tier configs), RateLimitTier, RateLimitResult, RateLimitCheckOptions, DEFAULT_RATE_LIMIT_CONFIG (100/50/10 req/min)
+  - `packages/ai/src/rate-limiter/token-bucket.ts` — Lua TOKEN_BUCKET_SCRIPT for atomic token refill + consume, createTokenBucketClient() with dynamic `@repo/cache` import, fail-open on Redis errors
+  - `packages/ai/src/rate-limiter.ts` — createRateLimiter() factory: checkLimit() with parallel three-tier check, bypass flag, consume()/resetLimit()/updateConfig()/getConfig(), config persistence in Redis
+  - `packages/ai/src/index.ts` — Barrel exports for rate limiter types and factory
+  - Lint clean, typecheck clean, build succeeds
+- [x] Phase 09 Step 09.08: Prompt Template System:
+  - `packages/ai/src/prompt/types.ts` — Template, TemplateVariable, CompiledTemplate, SegmentNode, RenderOptions, PromptRegistry types
+  - `packages/ai/src/prompt/engine.ts` — Custom template engine: parse template into segment AST, render variables (`{{var}}`), defaults (`{{var:default}}`), conditionals (`{{#if}}`), iteration (`{{#each}}`), nested templates (`{{> name}}`)
+  - `packages/ai/src/prompt/templates.ts` — 4 built-in templates: system/default, system/rag, system/tools, user/query with declared variables
+  - `packages/ai/src/prompt/registry.ts` — createPromptRegistry() with register/get/list/render/renderMessages/validate/estimateTokens, version-aware lookup, required variable validation, optional strict mode
+  - `packages/ai/src/prompt/estimator.ts` — Token estimation: CJK chars × 1.5, code blocks ÷ 3, plain text ÷ 4
+  - `packages/ai/src/prompt.ts` — Barrel exports
+  - `packages/ai/src/index.ts` — Barrel exports for prompt module
+  - Lint clean, typecheck clean, build succeeds
+- [x] Phase 09 Step 09.09: AI Gateway API Routes:
+  - `packages/validation/src/schemas/ai.ts` — Zod schemas for AI API requests (aiChatRequestSchema, aiEmbedRequestSchema, aiChatMessageSchema, aiErrorResponseSchema)
+  - `apps/web/src/app/api/ai/schema.ts` — Route-level Zod schemas + types (chatRequestSchema, embedRequestSchema)
+  - `apps/web/src/app/api/ai/middleware.ts` — Auth context extraction, error response helpers (unauthorized, rateLimited, badRequest, serverError, notFound)
+  - `apps/web/src/app/api/ai/chat/route.ts` — POST /api/ai/chat: non-streaming chat with model routing via router.route(), fallback chain with configurable model list, OpenRouter provider
+  - `apps/web/src/app/api/ai/chat/stream/route.ts` — POST /api/ai/chat/stream: SSE streaming via createStream + formatEventStream, Content-Type text/event-stream
+  - `apps/web/src/app/api/ai/embed/route.ts` — POST /api/ai/embed: text embedding with model routing fallback
+  - `apps/web/src/app/api/ai/models/route.ts` — GET /api/ai/models: model listing from OpenRouter API
+  - Lint clean, typecheck clean (pre-existing @repo/mcp only)
 - RAG Engine (Step 08.01-08.05 pending embedding pipeline)
 - Connector SDK and implementations
 - Chat UI
@@ -728,7 +815,7 @@
 
 ## Blocked
 
-None.
+- Phase 08 Steps 08.01-08.05 (Vector Store, Retriever, Hybrid Search, Re-ranker) blocked on Phase 07 (Embedding Pipeline).
 
 ## Technical Debt
 
@@ -749,7 +836,7 @@ None detected.
 
 | Decision | Status | Owner |
 |---|---|---|
-| Model routing strategy (AI Gateway) | Pending | — |
+| Model routing strategy (AI Gateway) | Resolved | Cheapest-capable + preferred model override |
 | Chunking strategy for RAG | Pending | — |
 | Pricing tiers for billing | Pending | — |
 
@@ -767,4 +854,4 @@ None detected.
 
 ## Last Updated
 
-2026-06-17 (Phase 08 Step 08.09 complete)
+2026-06-17 (Phase 09 Steps 09.01-09.09 complete)

@@ -191,19 +191,19 @@ Build the retrieval-augmented generation engine with hybrid search, re-ranking, 
 
 Build the unified AI gateway that routes requests to appropriate models through OpenRouter with cost control and reliability.
 
-- [ ] Implement OpenRouter client wrapper with retry, timeout, and error handling
-- [ ] Build model routing logic: cheapest capable model by task type
-- [ ] Create provider abstraction layer for multi-provider fallback
-- [ ] Implement streaming support with Server-Sent Events (SSE)
-- [ ] Build fallback chain on provider failure (e.g., OpenAI -> Anthropic -> Google)
-- [ ] Implement cost tracking per request, per workspace, per model
+- [x] Implement OpenRouter client wrapper with retry, timeout, and error handling
+- [x] Create provider abstraction layer for multi-provider fallback
+- [x] Build model routing logic: cheapest capable model by task type
+- [x] Add model capability registry (context window, supported features, pricing)
+- [x] Implement streaming support with Server-Sent Events (SSE)
+- [x] Build fallback chain on provider failure (e.g., OpenAI -> Anthropic -> Google)
+- [x] Implement cost tracking per request, per workspace, per model
 - [ ] Add rate limiting with token bucket algorithm per API key and per workspace
 - [ ] Build prompt templating system with variable interpolation and versioning
 - [ ] Implement request/response logging for audit and debugging
 - [ ] Add content moderation pre-filter and post-filter
 - [ ] Build token usage monitoring dashboard
 - [ ] Implement prompt validation against injection patterns and excessive length
-- [ ] Add model capability registry (context window, supported features, pricing)
 
 ---
 
@@ -211,7 +211,7 @@ Build the unified AI gateway that routes requests to appropriate models through 
 
 Build the core MCP (Model Context Protocol) gateway that enables AI models to discover and invoke tools dynamically.
 
-- [ ] Implement MCP protocol server (JSON-RPC 2.0 over SSE and stdio transports)
+- [x] Implement MCP protocol server (JSON-RPC 2.0 over SSE and stdio transports)
 - [ ] Build tool registry with schema validation and dynamic registration
 - [ ] Implement tool execution sandbox with timeout, resource limits, and output cap
 - [ ] Build streaming tool responses for long-running tool invocations

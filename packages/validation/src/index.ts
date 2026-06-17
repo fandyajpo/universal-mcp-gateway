@@ -86,6 +86,14 @@ export {
   documentIdParamsSchema,
 } from "./schemas/rag";
 
+// AI API schemas
+export {
+  aiChatMessageSchema,
+  aiChatRequestSchema,
+  aiEmbedRequestSchema,
+  aiErrorResponseSchema,
+} from "./schemas/ai";
+
 // Storage schemas
 export {
   fileTypeResultSchema,

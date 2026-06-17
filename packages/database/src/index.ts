@@ -33,3 +33,12 @@ export { DocumentRepository } from "./repositories/document";
 export type { DocumentFilters } from "./repositories/document";
 export { InvitationRepository } from "./repositories/invitation";
 export type { InvitationFilters } from "./repositories/invitation";
+
+export type { IAiCost } from "./models/ai-cost";
+export { AiCostModel } from "./models/ai-cost";
+
+export type { ITool, IToolMetadata } from "./models/tool";
+export { ToolModel } from "./models/tool";
+
+export { insertCostRecords } from "./services/cost-storage";
+export { runCostAggregation } from "./services/cost-aggregation";
