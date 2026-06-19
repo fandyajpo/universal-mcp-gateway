@@ -57,7 +57,7 @@ jobs:
       name: dev
       url: ${{ vars.DEPLOY_URL }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build-output-${{ github.event.inputs.environment }}
       - name: Deploy
@@ -75,7 +75,7 @@ jobs:
       name: staging
       url: ${{ vars.DEPLOY_URL }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build-output-${{ github.event.inputs.environment }}
       - name: Deploy
@@ -93,7 +93,7 @@ jobs:
       name: production
       url: ${{ vars.DEPLOY_URL }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build-output-${{ github.event.inputs.environment }}
       - name: Deploy
